@@ -1,6 +1,6 @@
 import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
-import { type Express } from "express";
+import { type Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -10,7 +10,7 @@ import { db } from "../db";
 import { eq } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
-const crypto = {
+export const crypto = {
   hash: async (password: string) => {
     const salt = randomBytes(16).toString("hex");
     const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -37,7 +37,7 @@ declare global {
 
 // Role-based middleware
 export const requireRole = (...roles: UserRole[]) => {
-  return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -177,30 +177,26 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    const result = insertUserSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-    }
-
     passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
       if (err) {
-        return next(err);
+        console.error("[Auth] Login error:", err);
+        return res.status(500).send("Internal server error");
       }
 
       if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
+        console.log("[Auth] Login failed:", info.message);
+        return res.status(400).send(info.message ?? "Invalid username or password");
       }
 
       req.logIn(user, (err) => {
         if (err) {
-          return next(err);
+          console.error("[Auth] Session error:", err);
+          return res.status(500).send("Failed to create session");
         }
 
         return res.json({
           message: "Login successful",
-          user: { id: user.id, username: user.username, role: user.role },
+          user: { id: user.id, username: user.username, role: user.role }
         });
       });
     })(req, res, next);

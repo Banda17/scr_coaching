@@ -6,6 +6,7 @@ import { type NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { trains, locations, users } from "@db/schema";
 import { TrainType, UserRole } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { crypto } from '../server/auth';
 
 // Configure Neon to use the ws package
 neonConfig.webSocketConstructor = ws;
@@ -59,12 +60,13 @@ export async function seedInitialData() {
       .limit(1);
       
     if (!existingAdmin) {
+      const hashedPassword = await crypto.hash('admin123');
       await db.insert(users).values({
         username: 'admin',
-        password: await import('./auth').then(auth => auth.crypto.hash('admin123')),
-        role: 'admin'
+        password: hashedPassword,
+        role: 'admin' as const
       });
-      console.log("[Database] Created admin user with default credentials");
+      console.log("[Database] Created admin user with credentials - username: admin, password: admin123");
     }
     // Add sample trains
     const sampleTrains = [
