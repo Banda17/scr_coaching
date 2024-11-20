@@ -23,42 +23,64 @@ const excelRowSchema = z.object({
   status: z.string().default('scheduled')
 });
 
+import { and, eq, gte, lte } from 'drizzle-orm';
+import { type Train, type Location, type Schedule } from '@db/schema';
+
 export function registerRoutes(app: Express) {
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
-    const isDbHealthy = await checkDbConnection();
-    if (isDbHealthy) {
-      res.json({ status: "healthy", database: "connected" });
-    } else {
-      res.status(503).json({ status: "unhealthy", database: "disconnected" });
+    try {
+      const isDbHealthy = await checkDbConnection();
+      if (isDbHealthy) {
+        res.json({ status: "healthy", database: "connected" });
+      } else {
+        res.status(503).json({ status: "unhealthy", database: "disconnected" });
+      }
+    } catch (error) {
+      res.status(500).json({ status: "error", message: "Failed to check database health" });
     }
   });
 
   // Trains
   app.get("/api/trains", async (req, res) => {
-    const allTrains = await db.select().from(trains);
-    res.json(allTrains);
+    try {
+      const allTrains = await db.select().from(trains);
+      res.json(allTrains);
+    } catch (error) {
+      console.error("[API] Failed to fetch trains:", error);
+      res.status(500).json({ error: "Failed to fetch trains" });
+    }
   });
 
   // Locations
   app.get("/api/locations", async (req, res) => {
-    const allLocations = await db.select().from(locations);
-    res.json(allLocations);
+    try {
+      const allLocations = await db.select().from(locations);
+      res.json(allLocations);
+    } catch (error) {
+      console.error("[API] Failed to fetch locations:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
   });
 
   // Schedules
   app.get("/api/schedules", async (req, res) => {
-    const { startDate, endDate } = req.query;
-    const results = await db.select().from(schedules)
-      .where(
-        startDate && endDate
-          ? and(
-              gte(schedules.scheduledDeparture, new Date(startDate as string)),
-              lte(schedules.scheduledDeparture, new Date(endDate as string))
-            )
-          : undefined
-      );
-    res.json(results);
+    try {
+      const { startDate, endDate } = req.query;
+      const results = await db.select().from(schedules)
+        .where(
+          startDate && endDate
+            ? and(
+                gte(schedules.scheduledDeparture, new Date(startDate as string)),
+                lte(schedules.scheduledDeparture, new Date(endDate as string))
+              )
+            : undefined
+        );
+      res.json(results);
+    } catch (error) {
+      console.error("[API] Failed to fetch schedules:", error);
+      res.status(500).json({ error: "Failed to fetch schedules" });
+    }
   });
 
   app.post("/api/schedules", async (req, res) => {

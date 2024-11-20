@@ -8,13 +8,15 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-function createDbConnection(retries = 5, delay = 5000) {
+import { type NeonDatabase } from 'drizzle-orm/neon-serverless';
+
+function createDbConnection(retries = 5, delay = 5000): NeonDatabase<typeof schema> {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL must be set");
+  }
+
   try {
-    const db = drizzle({
-      connection: process.env.DATABASE_URL,
-      schema,
-      ws: ws,
-    });
+    const db = drizzle(process.env.DATABASE_URL, { schema });
     console.log("[Database] Connection established successfully");
     return db;
   } catch (error) {
@@ -28,6 +30,7 @@ function createDbConnection(retries = 5, delay = 5000) {
   }
 }
 
+// Initialize database connection
 export const db = createDbConnection();
 
 // Add health check endpoint
