@@ -64,10 +64,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(),
-        scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(),
-        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(),
-        effectiveEndDate: values.effectiveEndDate instanceof Date ? values.effectiveEndDate : null
+        scheduledDeparture: new Date(values.scheduledDeparture),
+        scheduledArrival: new Date(values.scheduledArrival),
+        effectiveStartDate: new Date(values.effectiveStartDate),
+        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
       };
       
       const response = await fetch('/api/schedules', {
@@ -239,7 +239,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                   const currentRunningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
                   const updatedDays = [...currentRunningDays];
                   updatedDays[day.value] = checked === true;
-                  form.setValue('runningDays', updatedDays, { shouldValidate: true });
+                  form.setValue('runningDays', updatedDays);
                 }}
               />
               <label htmlFor={`day-${day.value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
