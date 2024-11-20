@@ -4,6 +4,7 @@ import ScheduleForm from "../components/ScheduleForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ExportButton from "../components/ExportButton";
 import { ArrowLeft } from "lucide-react";
+import ImportSchedules from "../components/ImportSchedules";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
@@ -30,7 +31,10 @@ export default function Schedules() {
           </Link>
           <h1 className="text-3xl font-bold">Schedule Management</h1>
         </div>
-        <ExportButton />
+        <div className="flex items-center gap-4">
+            <ImportSchedules />
+            <ExportButton />
+          </div>
       </div>
 
       <Card>
