@@ -22,7 +22,9 @@ function createDbConnection(retries = 5, delay = 5000): NeonDatabase<typeof sche
   } catch (error) {
     if (retries > 0) {
       console.log(`[Database] Connection failed, retrying in ${delay/1000}s... (${retries} attempts remaining)`);
-      setTimeout(() => createDbConnection(retries - 1, delay), delay);
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(createDbConnection(retries - 1, delay)), delay);
+      }) as NeonDatabase<typeof schema>;
     } else {
       console.error("[Database] Failed to establish connection after multiple attempts");
       throw error;

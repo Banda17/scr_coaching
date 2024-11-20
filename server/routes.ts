@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { db } from "../db";
+import { db, checkDbConnection } from "../db";
 import { trains, locations, schedules } from "@db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import multer from "multer";
@@ -22,9 +22,6 @@ const excelRowSchema = z.object({
   scheduledArrival: z.string(),
   status: z.string().default('scheduled')
 });
-
-import { and, eq, gte, lte } from 'drizzle-orm';
-import { type Train, type Location, type Schedule } from '@db/schema';
 
 export function registerRoutes(app: Express) {
   // Health check endpoint
@@ -89,6 +86,9 @@ export function registerRoutes(app: Express) {
       res.json(newSchedule[0]);
     } catch (error) {
       res.status(400).json({ error: "Invalid schedule data" });
+    }
+  });
+
   // Import schedules from Excel
   app.post("/api/schedules/import", upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -153,8 +153,6 @@ export function registerRoutes(app: Express) {
         error: "Failed to process Excel file",
         details: error instanceof Error ? error.message : undefined
       });
-    }
-  });
     }
   });
 
