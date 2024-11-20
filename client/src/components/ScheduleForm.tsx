@@ -8,6 +8,7 @@ import { insertScheduleSchema, type InsertSchedule } from "@db/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', value: 0 },
