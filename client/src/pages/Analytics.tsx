@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell, Legend, Area, AreaChart
+} from 'recharts';
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,8 @@ interface AnalyticsData {
   trainUtilization: TrainUtilization[];
   routePerformance: RoutePerformance[];
 }
+
+const COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
 async function fetchAnalytics(): Promise<AnalyticsData> {
   const response = await fetch('/api/analytics/schedule-metrics');
@@ -99,24 +104,119 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Train Utilization</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={utilizationData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="schedules" fill="#22c55e" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Train Utilization</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={utilizationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="schedules" fill="#22c55e" name="Total Schedules" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Schedule Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'On Time', value: analytics?.overview.total - analytics?.overview.delayed - analytics?.overview.cancelled || 0 },
+                      { name: 'Delayed', value: analytics?.overview.delayed || 0 },
+                      { name: 'Cancelled', value: analytics?.overview.cancelled || 0 }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    label
+                  >
+                    {COLORS.map((color, index) => (
+                      <Cell key={`cell-${index}`} fill={color} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Route Performance Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={analytics?.routePerformance.map(route => ({
+                    name: route.departureName,
+                    totalTrips: route.totalTrips,
+                    delayedTrips: route.delayedTrips,
+                    avgDelay: route.avgDelayMinutes || 0
+                  }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="left" orientation="left" stroke="#22c55e" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" />
+                  <Tooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="totalTrips" fill="#22c55e" name="Total Trips" />
+                  <Bar yAxisId="right" dataKey="delayedTrips" fill="#f59e0b" name="Delayed Trips" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Peak Hour Operations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={analytics?.routePerformance.map(route => ({
+                    name: route.departureName,
+                    peakTrips: route.peakHourTrips,
+                    totalTrips: route.totalTrips,
+                    peakPercentage: ((route.peakHourTrips / route.totalTrips) * 100).toFixed(1)
+                  }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="peakTrips" stackId="1" stroke="#3b82f6" fill="#3b82f6" name="Peak Hour Trips" />
+                  <Area type="monotone" dataKey="totalTrips" stackId="1" stroke="#22c55e" fill="#22c55e" name="Total Trips" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
