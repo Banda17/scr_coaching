@@ -39,18 +39,31 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       effectiveEndDate: null,
       scheduledDeparture: new Date(),
       scheduledArrival: new Date()
+    },
+    values: {
+      status: 'scheduled',
+      isCancelled: false,
+      runningDays: [true, true, true, true, true, true, true],
+      effectiveStartDate: new Date(),
+      effectiveEndDate: null,
+      scheduledDeparture: new Date(),
+      scheduledArrival: new Date()
     }
   });
 
-  // Add validation for departure time
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
-    valueAsDate: true,
     validate: (value) => {
       if (!value) return 'Please select departure time';
-      const departureDate = new Date(value);
-      if (isNaN(departureDate.getTime())) {
-        return 'Invalid date format';
+      if (!(value instanceof Date)) {
+        try {
+          const date = new Date(value);
+          if (isNaN(date.getTime())) {
+            return 'Invalid date format';
+          }
+        } catch (e) {
+          return 'Invalid date format';
+        }
       }
       return true;
     }
@@ -226,10 +239,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch(`runningDays.${day.value}`)}
                 onCheckedChange={(checked) => {
-                  const runningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
+                  const currentRunningDays = form.getValues('runningDays');
+                  const runningDays = Array.isArray(currentRunningDays) ? currentRunningDays : [true, true, true, true, true, true, true];
                   const updatedDays = [...runningDays];
-                  updatedDays[day.value] = checked as boolean;
-                  form.setValue('runningDays', updatedDays);
+                  updatedDays[day.value] = checked === true;
+                  form.setValue('runningDays', updatedDays, { shouldValidate: true });
                 }}
               />
               <label htmlFor={`day-${day.value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
