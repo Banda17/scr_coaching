@@ -1,0 +1,93 @@
+R(TypeScript)  Type 'string' is not assignable to type 'Date'.
+ FILE  /home/runner/workspace/client/src/components/ScheduleForm.tsx:38:7
+
+    36 |       isCancelled: false,
+    37 |       runningDays: [true, true, true, true, true, true, true],
+  > 38 |       effectiveStartDate: format(new Date(), 'yyyy-MM-dd'),
+       |       ^^^^^^^^^^^^^^^^^^
+    39 |       effectiveEndDate: null,
+    40 |       scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    41 |       scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
+
+ ERROR(TypeScript)  Type 'string' is not assignable to type 'Date'.
+ FILE  /home/runner/workspace/client/src/components/ScheduleForm.tsx:40:7
+
+    38 |       effectiveStartDate: format(new Date(), 'yyyy-MM-dd'),
+    39 |       effectiveEndDate: null,
+  > 40 |       scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+       |       ^^^^^^^^^^^^^^^^^^
+    41 |       scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
+    42 |     }
+    43 |   });
+
+ ERROR(TypeScript)  Type 'string' is not assignable to type 'Date'.
+ FILE  /home/runner/workspace/client/src/components/ScheduleForm.tsx:41:7
+
+    39 |       effectiveEndDate: null,
+    40 |       scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+  > 41 |       scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
+       |       ^^^^^^^^^^^^^^^^
+    42 |     }
+    43 |   });
+    44 |
+
+ ERROR(TypeScript)  No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'Date | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'Date | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+ FILE  /home/runner/workspace/client/src/components/ScheduleForm.tsx:65:38
+
+    63 |         scheduledDeparture: new Date(values.scheduledDeparture),
+    64 |         scheduledArrival: new Date(values.scheduledArrival),
+  > 65 |         effectiveStartDate: new Date(values.effectiveStartDate),
+       |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+    66 |         effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
+    67 |       };
+    68 |       
+
+ ERROR(TypeScript)  Type 'boolean[] | undefined' must have a '[Symbol.iterator]()' method that returns an iterator.
+ FILE  /home/runner/workspace/client/src/components/ScheduleForm.tsx:229:43
+
+    227 |                 checked={form.watch(`runningDays.${day.value}`)}
+    228 |                 onCheckedChange={(checked) => {
+  > 229 |                   const runningDays = [...form.getValues('runningDays')];
+        |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    230 |                   runningDays[day.value] = checked;
+    231 |                   form.setValue('runningDays', runningDays);
+    232 |                 }}
+
+ ERROR(TypeScript)  'analytics.overview.total' is possibly 'undefined'.
+ FILE  /home/runner/workspace/client/src/pages/Analytics.tsx:138:49
+
+    136 |                   <Pie
+    137 |                     data={[
+  > 138 |                       { name: 'On Time', value: analytics?.overview.total - analytics?.overview.delayed - analytics?.overview.cancelled || 0 },
+        |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+    139 |                       { name: 'Delayed', value: analytics?.overview.delayed || 0 },
+    140 |                       { name: 'Cancelled', value: analytics?.overview.cancelled || 0 }
+    141 |                     ]}
+
+ ERROR(TypeScript)  'analytics.overview.delayed' is possibly 'undefined'.
+ FILE  /home/runner/workspace/client/src/pages/Analytics.tsx:138:77
+
+    136 |                   <Pie
+    137 |                     data={[
+  > 138 |                       { name: 'On Time', value: analytics?.overview.total - analytics?.overview.delayed - analytics?.overview.cancelled || 0 },
+        |                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    139 |                       { name: 'Delayed', value: analytics?.overview.delayed || 0 },
+    140 |                       { name: 'Cancelled', value: analytics?.overview.cancelled || 0 }
+    141 |                     ]}
+
+ ERROR(TypeScript)  'analytics.overview.cancelled' is possibly 'undefined'.
+ FILE  /home/runner/workspace/client/src/pages/Analytics.tsx:138:107
+
+    136 |                   <Pie
+    137 |                     data={[
+  > 138 |                       { name: 'On Time', value: analytics?.overview.total - analytics?.overview.delayed - analytics?.overview.cancelled || 0 },
+        |                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    139 |                       { name: 'Delayed', value: analytics?.overview.delayed || 0 },
+    140 |                       { name: 'Cancelled', value: analytics?.overview.cancelled || 0 }
+    141 |                     ]}

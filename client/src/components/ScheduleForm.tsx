@@ -35,16 +35,17 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       status: 'scheduled',
       isCancelled: false,
       runningDays: [true, true, true, true, true, true, true],
-      effectiveStartDate: format(new Date(), 'yyyy-MM-dd'),
+      effectiveStartDate: new Date(),
       effectiveEndDate: null,
-      scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
+      scheduledDeparture: new Date(),
+      scheduledArrival: new Date()
     }
   });
 
   // Add validation for departure time
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
+    valueAsDate: true,
     validate: (value) => {
       if (!value) return 'Please select departure time';
       const departureDate = new Date(value);
@@ -52,18 +53,17 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         return 'Invalid date format';
       }
       return true;
-    },
-    setValueAs: (value: string) => value ? new Date(value) : null
+    }
   });
 
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: values.scheduledDeparture ? new Date(values.scheduledDeparture) : new Date(),
-        scheduledArrival: values.scheduledArrival ? new Date(values.scheduledArrival) : new Date(),
-        effectiveStartDate: values.effectiveStartDate ? new Date(values.effectiveStartDate) : new Date(),
-        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
+        scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(),
+        scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(),
+        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(),
+        effectiveEndDate: values.effectiveEndDate instanceof Date ? values.effectiveEndDate : null
       };
       
       const response = await fetch('/api/schedules', {
