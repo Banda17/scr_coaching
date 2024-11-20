@@ -48,20 +48,28 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     validate: (value) => {
       if (!value) return 'Please select departure time';
       const departureDate = new Date(value);
-      const now = new Date();
-      if (departureDate < now) {
-        return 'Departure time must be in the future';
+      if (isNaN(departureDate.getTime())) {
+        return 'Invalid date format';
       }
       return true;
-    }
+    },
+    setValueAs: (value: string) => value ? new Date(value) : null
   });
 
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
+      const formattedValues = {
+        ...values,
+        scheduledDeparture: new Date(values.scheduledDeparture),
+        scheduledArrival: new Date(values.scheduledArrival),
+        effectiveStartDate: new Date(values.effectiveStartDate),
+        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
+      };
+      
       const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
+        body: JSON.stringify(formattedValues)
       });
       if (!response.ok) throw new Error('Failed to create schedule');
       return response.json();
