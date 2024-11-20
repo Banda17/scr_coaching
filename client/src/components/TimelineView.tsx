@@ -4,15 +4,13 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const localizer = momentLocalizer(moment);
 
-interface Schedule {
-  id: number;
-  trainId: number | null;
-  departureLocationId: number | null;
-  arrivalLocationId: number | null;
-  scheduledDeparture: string;
-  scheduledArrival: string;
-  status: string;
-  isCancelled: boolean;
+import type { Schedule as DbSchedule } from "@db/schema";
+
+interface Schedule extends Omit<DbSchedule, 'scheduledDeparture' | 'scheduledArrival' | 'actualDeparture' | 'actualArrival'> {
+  scheduledDeparture: Date | string;
+  scheduledArrival: Date | string;
+  actualDeparture: Date | string | null;
+  actualArrival: Date | string | null;
 }
 
 interface TimelineViewProps {
@@ -23,8 +21,12 @@ export default function TimelineView({ schedules }: TimelineViewProps) {
   const events = schedules.map(schedule => ({
     id: schedule.id,
     title: `Train ${schedule.trainId}`,
-    start: new Date(schedule.scheduledDeparture),
-    end: new Date(schedule.scheduledArrival),
+    start: schedule.scheduledDeparture instanceof Date 
+      ? schedule.scheduledDeparture 
+      : new Date(schedule.scheduledDeparture),
+    end: schedule.scheduledArrival instanceof Date 
+      ? schedule.scheduledArrival 
+      : new Date(schedule.scheduledArrival),
     status: schedule.status,
     isCancelled: schedule.isCancelled
   }));

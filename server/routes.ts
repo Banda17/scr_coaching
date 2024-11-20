@@ -24,6 +24,16 @@ const excelRowSchema = z.object({
 });
 
 export function registerRoutes(app: Express) {
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    const isDbHealthy = await checkDbConnection();
+    if (isDbHealthy) {
+      res.json({ status: "healthy", database: "connected" });
+    } else {
+      res.status(503).json({ status: "unhealthy", database: "disconnected" });
+    }
+  });
+
   // Trains
   app.get("/api/trains", async (req, res) => {
     const allTrains = await db.select().from(trains);
