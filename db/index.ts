@@ -51,6 +51,24 @@ export { db };
 // Seed initial data
 export async function seedInitialData() {
   try {
+    // Create initial admin user
+    const adminPassword = await import('crypto').then(crypto => 
+      crypto.randomBytes(8).toString('hex')
+    );
+    
+    const [existingAdmin] = await db.select()
+      .from(users)
+      .where(eq(users.username, 'admin'))
+      .limit(1);
+      
+    if (!existingAdmin) {
+      await db.insert(users).values({
+        username: 'admin',
+        password: await import('./auth').then(auth => auth.crypto.hash(adminPassword)),
+        role: 'admin'
+      });
+      console.log("[Database] Created admin user with password:", adminPassword);
+    }
     // Add sample trains
     const sampleTrains = [
       { trainNumber: 'EXP101', description: 'Daily Express', type: TrainType.Express },

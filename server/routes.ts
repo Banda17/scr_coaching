@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { db, checkDbConnection } from "../db";
-import { trains, locations, schedules } from "@db/schema";
+import { trains, locations, schedules, UserRole } from "@db/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { setupAuth, requireRole } from "./auth";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -28,6 +29,8 @@ const excelRowSchema = z.object({
 // The analytics endpoints are reorganized within the function
 
 export function registerRoutes(app: Express) {
+  // Setup authentication routes
+  setupAuth(app);
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {
@@ -84,7 +87,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/schedules", async (req, res) => {
+  app.post("/api/schedules", requireRole(UserRole.Admin, UserRole.Operator), async (req, res) => {
     try {
       const newSchedule = await db.insert(schedules).values(req.body).returning();
       res.json(newSchedule[0]);
@@ -94,7 +97,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Import schedules from Excel
-  app.post("/api/schedules/import", upload.single('file'), async (req, res) => {
+  app.post("/api/schedules/import", requireRole(UserRole.Admin), upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -160,7 +163,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/schedules/:id", async (req, res) => {
+  app.patch("/api/schedules/:id", requireRole(UserRole.Admin, UserRole.Operator), async (req, res) => {
     try {
       const updated = await db.update(schedules)
         .set(req.body)
@@ -172,7 +175,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/schedules/:id", async (req, res) => {
+  app.delete("/api/schedules/:id", requireRole(UserRole.Admin), async (req, res) => {
     await db.delete(schedules).where(eq(schedules.id, parseInt(req.params.id)));
     res.status(204).send();
   });

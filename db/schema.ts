@@ -2,6 +2,22 @@ import { pgTable, text, integer, timestamp, boolean } from "drizzle-orm/pg-core"
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const UserRole = {
+  Admin: 'admin',
+  Operator: 'operator',
+  Viewer: 'viewer'
+} as const;
+
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+export const users = pgTable("users", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default('viewer').$type<UserRole>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const TrainType = {
   Express: 'express',
   Local: 'local',
@@ -51,3 +67,8 @@ export const insertScheduleSchema = createInsertSchema(schedules);
 export const selectScheduleSchema = createSelectSchema(schedules);
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 export type Schedule = z.infer<typeof selectScheduleSchema>;
+
+export const insertUserSchema = createInsertSchema(users);
+export const selectUserSchema = createSelectSchema(users);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = z.infer<typeof selectUserSchema>;

@@ -1,9 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, BarChart } from "lucide-react";
+import { Home, Calendar, BarChart, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/hooks/use-user";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 export default function Navbar() {
   const [location] = useLocation();
+  const { user, logout } = useUser();
+  const { toast } = useToast();
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
@@ -33,6 +38,28 @@ export default function Navbar() {
                 <span className="hidden md:inline-block">{label}</span>
               </Link>
             ))}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="h-4 w-4" />
+              <span>{user?.username}</span>
+              <span className="px-2 py-1 text-xs rounded-full bg-primary/10">
+                {user?.role}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await logout();
+                toast({
+                  title: "Logged out",
+                  description: "Successfully logged out"
+                });
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
