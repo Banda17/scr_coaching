@@ -15,13 +15,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-function createDbConnection(retries = 5, delay = 5000): NeonDatabase<typeof schema> {
+async function createDbConnection(retries = 5, delay = 5000): Promise<NeonDatabase<typeof schema>> {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL must be set");
   }
 
   try {
-    // Configure WebSocket before creating connection
     neonConfig.webSocketConstructor = ws;
     const db = drizzle(process.env.DATABASE_URL, { schema });
     console.log("[Database] Connection established successfully");
@@ -29,18 +28,16 @@ function createDbConnection(retries = 5, delay = 5000): NeonDatabase<typeof sche
   } catch (error) {
     if (retries > 0) {
       console.log(`[Database] Connection failed, retrying in ${delay/1000}s... (${retries} attempts remaining)`);
-      return new Promise((resolve) => {
-        setTimeout(() => resolve(createDbConnection(retries - 1, delay)), delay);
-      }) as NeonDatabase<typeof schema>;
-    } else {
-      console.error("[Database] Failed to establish connection after multiple attempts");
-      throw error;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return createDbConnection(retries - 1, delay);
     }
+    console.error("[Database] Failed to establish connection after multiple attempts");
+    throw error;
   }
 }
 
-// Initialize database connection
-export const db = createDbConnection();
+// Initialize database connection with top-level await
+export const db = await createDbConnection();
 
 // Seed initial data
 export async function seedInitialData() {
