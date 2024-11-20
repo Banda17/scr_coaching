@@ -142,13 +142,19 @@ export default function Analytics() {
                     <td className="p-2">{route.totalTrips}</td>
                     <td className="p-2">{route.delayedTrips}</td>
                     <td className="p-2">
-                      {((route.delayedTrips / route.totalTrips) * 100).toFixed(1)}%
+                      {route.totalTrips > 0 
+                        ? ((route.delayedTrips / route.totalTrips) * 100).toFixed(1)
+                        : '0'}%
                     </td>
                     <td className="p-2">
-                      {route.avgDelayMinutes?.toFixed(1) || 0} mins
+                      {typeof route.avgDelayMinutes === 'number' 
+                        ? `${route.avgDelayMinutes.toFixed(1)} mins`
+                        : '0 mins'}
                     </td>
                     <td className="p-2">
-                      {route.peakHourTrips} ({((route.peakHourTrips / route.totalTrips) * 100).toFixed(1)}%)
+                      {route.peakHourTrips} ({route.totalTrips > 0 
+                        ? ((route.peakHourTrips / route.totalTrips) * 100).toFixed(1)
+                        : '0'}%)
                     </td>
                   </tr>
                 ))}
