@@ -135,9 +135,12 @@ export default function Analytics() {
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'On Time', value: analytics?.overview.total - analytics?.overview.delayed - analytics?.overview.cancelled || 0 },
-                      { name: 'Delayed', value: analytics?.overview.delayed || 0 },
-                      { name: 'Cancelled', value: analytics?.overview.cancelled || 0 }
+                      { 
+                        name: 'On Time', 
+                        value: (analytics?.overview?.total ?? 0) - (analytics?.overview?.delayed ?? 0) - (analytics?.overview?.cancelled ?? 0)
+                      },
+                      { name: 'Delayed', value: analytics?.overview?.delayed ?? 0 },
+                      { name: 'Cancelled', value: analytics?.overview?.cancelled ?? 0 }
                     ]}
                     cx="50%"
                     cy="50%"
