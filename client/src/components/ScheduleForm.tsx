@@ -35,7 +35,23 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       isCancelled: false,
       runningDays: [true, true, true, true, true, true, true],
       effectiveStartDate: format(new Date(), 'yyyy-MM-dd'),
-      effectiveEndDate: null
+      effectiveEndDate: null,
+      scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
+    }
+  });
+
+  // Add validation for departure time
+  form.register('scheduledDeparture', {
+    required: 'Departure time is required',
+    validate: (value) => {
+      if (!value) return 'Please select departure time';
+      const departureDate = new Date(value);
+      const now = new Date();
+      if (departureDate < now) {
+        return 'Departure time must be in the future';
+      }
+      return true;
     }
   });
 
@@ -131,7 +147,16 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <Input
             type="datetime-local"
             {...form.register('scheduledDeparture')}
+            className={cn(
+              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+              form.formState.errors.scheduledDeparture && "border-red-500"
+            )}
           />
+          {form.formState.errors.scheduledDeparture && (
+            <span className="text-sm text-red-500">
+              {form.formState.errors.scheduledDeparture.message}
+            </span>
+          )}
         </div>
 
         <div className="space-y-2">
