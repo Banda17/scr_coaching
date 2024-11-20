@@ -17,18 +17,20 @@ export default function Navbar() {
         <div className="flex flex-1 items-center justify-between">
           <div className="flex items-center gap-6 md:gap-10">
             {navItems.map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href}>
-                <a
-                  className={cn(
-                    "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                    location === href
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden md:inline-block">{label}</span>
-                </a>
+              <Link 
+                key={href} 
+                href={href}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                  location === href
+                    ? "text-primary"
+                    : "text-muted-foreground"
+                )}
+                role="link"
+                aria-current={location === href ? "page" : undefined}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="hidden md:inline-block">{label}</span>
               </Link>
             ))}
           </div>
