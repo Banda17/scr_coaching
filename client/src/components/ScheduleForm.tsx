@@ -40,15 +40,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       scheduledDeparture: new Date(),
       scheduledArrival: new Date()
     },
-    defaultValues: {
-      status: 'scheduled',
-      isCancelled: false,
-      runningDays: [true, true, true, true, true, true, true],
-      effectiveStartDate: new Date(),
-      effectiveEndDate: null,
-      scheduledDeparture: new Date(),
-      scheduledArrival: new Date()
-    }
+    mode: 'onChange'
   });
 
   form.register('scheduledDeparture', {
@@ -73,10 +65,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: new Date(values.scheduledDeparture),
-        scheduledArrival: new Date(values.scheduledArrival),
-        effectiveStartDate: new Date(values.effectiveStartDate),
-        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
+        scheduledDeparture: values.scheduledDeparture,
+        scheduledArrival: values.scheduledArrival,
+        effectiveStartDate: values.effectiveStartDate,
+        effectiveEndDate: values.effectiveEndDate
       };
       
       const response = await fetch('/api/schedules', {
@@ -220,7 +212,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <Input
             type="date"
             {...form.register('effectiveStartDate', {
-              setValueAs: (value: string) => value ? new Date(value) : new Date()
+              required: 'Start date is required',
+              valueAsDate: true
             })}
           />
         </div>
@@ -230,7 +223,15 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <Input
             type="date"
             {...form.register('effectiveEndDate', {
-              setValueAs: (value: string) => value ? new Date(value) : null
+              valueAsDate: true,
+              validate: (value) => {
+                if (!value) return true;
+                const startDate = form.getValues('effectiveStartDate');
+                if (value <= startDate) {
+                  return 'End date must be after start date';
+                }
+                return true;
+              }
             })}
           />
         </div>
