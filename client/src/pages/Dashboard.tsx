@@ -7,6 +7,7 @@ import TrainList from "../components/TrainList";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, BarChart as ChartBar } from "lucide-react";
+import TrainControls from "../components/TrainControls";
 
 export default function Dashboard() {
   const { data: schedules, isLoading } = useQuery<Schedule[]>({
@@ -22,7 +23,8 @@ export default function Dashboard() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Railway Operations Dashboard</h1>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+          <TrainControls />
           <Link href="/analytics">
             <Button variant="outline">
               <ChartBar className="mr-2 h-4 w-4" />
