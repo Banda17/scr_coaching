@@ -39,15 +39,6 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       effectiveEndDate: null,
       scheduledDeparture: new Date(),
       scheduledArrival: new Date()
-    },
-    values: {
-      status: 'scheduled',
-      isCancelled: false,
-      runningDays: [true, true, true, true, true, true, true],
-      effectiveStartDate: new Date(),
-      effectiveEndDate: null,
-      scheduledDeparture: new Date(),
-      scheduledArrival: new Date()
     }
   });
 
@@ -168,7 +159,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Scheduled Departure</label>
           <Input
             type="datetime-local"
-            {...form.register('scheduledDeparture')}
+            {...form.register('scheduledDeparture', {
+              setValueAs: (value: string) => value ? new Date(value) : new Date()
+            })}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
               form.formState.errors.scheduledDeparture && "border-red-500"
@@ -217,7 +210,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Effective Start Date</label>
           <Input
             type="date"
-            {...form.register('effectiveStartDate')}
+            {...form.register('effectiveStartDate', {
+              setValueAs: (value: string) => value ? new Date(value) : new Date()
+            })}
           />
         </div>
 
@@ -225,7 +220,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Effective End Date (Optional)</label>
           <Input
             type="date"
-            {...form.register('effectiveEndDate')}
+            {...form.register('effectiveEndDate', {
+              setValueAs: (value: string) => value ? new Date(value) : null
+            })}
           />
         </div>
       </div>
@@ -239,9 +236,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch(`runningDays.${day.value}`)}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = form.getValues('runningDays');
-                  const runningDays = Array.isArray(currentRunningDays) ? currentRunningDays : [true, true, true, true, true, true, true];
-                  const updatedDays = [...runningDays];
+                  const currentRunningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
+                  const updatedDays = [...currentRunningDays];
                   updatedDays[day.value] = checked === true;
                   form.setValue('runningDays', updatedDays, { shouldValidate: true });
                 }}
