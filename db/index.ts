@@ -36,8 +36,17 @@ async function createDbConnection(retries = 5, delay = 5000): Promise<NeonDataba
   }
 }
 
-// Initialize database connection with top-level await
-export const db = await createDbConnection();
+// Initialize database instance
+let db: NeonDatabase<typeof schema>;
+
+export async function initializeDb() {
+  db = await createDbConnection();
+  await seedInitialData();
+  return db;
+}
+
+// Make db available for import
+export { db };
 
 // Seed initial data
 export async function seedInitialData() {

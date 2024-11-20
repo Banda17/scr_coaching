@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
+import { initializeDb } from "../db";
 import { createServer } from "http";
 
 function log(message: string) {
@@ -49,6 +50,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await initializeDb();
   registerRoutes(app);
   const server = createServer(app);
 
