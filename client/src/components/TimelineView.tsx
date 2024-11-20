@@ -18,18 +18,36 @@ interface TimelineViewProps {
 }
 
 export default function TimelineView({ schedules }: TimelineViewProps) {
-  const events = schedules.map(schedule => ({
-    id: schedule.id,
-    title: `Train ${schedule.trainId}`,
-    start: schedule.scheduledDeparture instanceof Date 
-      ? schedule.scheduledDeparture 
-      : new Date(schedule.scheduledDeparture),
-    end: schedule.scheduledArrival instanceof Date 
-      ? schedule.scheduledArrival 
-      : new Date(schedule.scheduledArrival),
-    status: schedule.status,
-    isCancelled: schedule.isCancelled
-  }));
+  const events = schedules.flatMap(schedule => {
+    // Get the current date's day of week (0 = Monday, 6 = Sunday)
+    const currentDate = new Date();
+    const currentDayOfWeek = (currentDate.getDay() + 6) % 7; // Convert Sunday = 0 to Sunday = 6
+    
+    // Check if schedule is effective
+    const startDate = new Date(schedule.effectiveStartDate);
+    const endDate = schedule.effectiveEndDate ? new Date(schedule.effectiveEndDate) : null;
+    if (
+      startDate > currentDate || 
+      (endDate && endDate < currentDate) ||
+      !schedule.runningDays[currentDayOfWeek]
+    ) {
+      return [];
+    }
+
+    return [{
+      id: schedule.id,
+      title: `Train ${schedule.trainId}`,
+      start: schedule.scheduledDeparture instanceof Date 
+        ? schedule.scheduledDeparture 
+        : new Date(schedule.scheduledDeparture),
+      end: schedule.scheduledArrival instanceof Date 
+        ? schedule.scheduledArrival 
+        : new Date(schedule.scheduledArrival),
+      status: schedule.status,
+      isCancelled: schedule.isCancelled,
+      runningDays: schedule.runningDays,
+    }];
+  });
 
   const eventStyleGetter = (event: any) => {
     let backgroundColor = '#22c55e'; // green for running

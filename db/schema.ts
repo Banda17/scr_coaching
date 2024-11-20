@@ -1,4 +1,5 @@
 import { pgTable, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -51,6 +52,10 @@ export const schedules = pgTable("schedules", {
   actualArrival: timestamp("actual_arrival"),
   status: text("status").notNull().default('scheduled'),
   isCancelled: boolean("is_cancelled").notNull().default(false),
+  // Array of 7 booleans representing running days from Monday (0) to Sunday (6)
+  runningDays: boolean("running_days").array().notNull().default([true, true, true, true, true, true, true]),
+  effectiveStartDate: timestamp("effective_start_date").notNull().default(sql`CURRENT_DATE`),
+  effectiveEndDate: timestamp("effective_end_date"),
 });
 
 export const insertTrainSchema = createInsertSchema(trains);
