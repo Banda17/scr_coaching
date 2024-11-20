@@ -39,6 +39,15 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       effectiveEndDate: null,
       scheduledDeparture: new Date(),
       scheduledArrival: new Date()
+    },
+    defaultValues: {
+      status: 'scheduled',
+      isCancelled: false,
+      runningDays: [true, true, true, true, true, true, true],
+      effectiveStartDate: new Date(),
+      effectiveEndDate: null,
+      scheduledDeparture: new Date(),
+      scheduledArrival: new Date()
     }
   });
 

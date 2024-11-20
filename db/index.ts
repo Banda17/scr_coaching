@@ -42,9 +42,15 @@ async function createDbConnection(retries = 5, delay = 5000): Promise<NeonDataba
 let db: NeonDatabase<typeof schema>;
 
 export async function initializeDb() {
-  db = await createDbConnection();
-  await seedInitialData();
-  return db;
+  try {
+    db = await createDbConnection();
+    console.log("[Database] Database initialized successfully");
+    await seedInitialData();
+    return db;
+  } catch (error) {
+    console.error("[Database] Failed to initialize database:", error);
+    throw error;
+  }
 }
 
 // Make db available for import
@@ -52,6 +58,11 @@ export { db };
 
 // Seed initial data
 export async function seedInitialData() {
+  if (!db) {
+    console.error("[Database] Database not initialized");
+    return false;
+  }
+
   try {
     // Create initial admin user with known credentials
     const [existingAdmin] = await db.select()
