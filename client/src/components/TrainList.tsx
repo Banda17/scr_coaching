@@ -70,45 +70,51 @@ export default function TrainList({ schedules }: { schedules: Schedule[] }) {
                 {schedule.train?.type || 'Unknown'}
               </Badge>
             </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
+            <TableCell className="min-w-[250px]">
+              <div className="flex items-center gap-3">
                 <Badge className={getStatusColor(schedule.status)}>
                   {schedule.isCancelled ? 'Cancelled' : schedule.status}
                 </Badge>
                 {!schedule.isCancelled && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
+                      className="hover:bg-secondary transition-colors"
                       onClick={() => updateSchedule({
                         id: schedule.id,
                         status: 'running',
                         actualDeparture: new Date().toISOString()
                       })}
                       disabled={schedule.status === 'running'}
+                      title="Start Train"
                     >
                       <Play className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
+                      className="hover:bg-secondary transition-colors"
                       onClick={() => updateSchedule({
                         id: schedule.id,
                         status: 'delayed',
                       })}
                       disabled={schedule.status === 'delayed'}
+                      title="Mark as Delayed"
                     >
                       <AlertTriangle className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
+                      className="hover:bg-secondary transition-colors"
                       onClick={() => updateSchedule({
                         id: schedule.id,
                         status: 'completed',
                         actualArrival: new Date().toISOString()
                       })}
                       disabled={schedule.status === 'completed'}
+                      title="Complete Journey"
                     >
                       <Pause className="h-4 w-4" />
                     </Button>
