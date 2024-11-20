@@ -9,14 +9,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
+interface Train {
+  id: number;
+  trainNumber: string;
+  type: string;
+  description?: string;
+}
+
 interface Schedule {
   id: number;
-  trainId: number;
+  trainId: number | null;
+  train?: Train;
+  departureLocationId: number | null;
+  arrivalLocationId: number | null;
   status: string;
-  scheduledDeparture: string;
-  scheduledArrival: string;
-  actualDeparture?: string;
-  actualArrival?: string;
+  scheduledDeparture: Date | string;
+  scheduledArrival: Date | string;
+  actualDeparture: Date | string | null;
+  actualArrival: Date | string | null;
   isCancelled: boolean;
 }
 
@@ -38,7 +48,8 @@ export default function TrainList({ schedules }: { schedules: Schedule[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Train ID</TableHead>
+          <TableHead>Train Number</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Scheduled Departure</TableHead>
           <TableHead>Scheduled Arrival</TableHead>
@@ -49,7 +60,12 @@ export default function TrainList({ schedules }: { schedules: Schedule[] }) {
       <TableBody>
         {schedules.map((schedule) => (
           <TableRow key={schedule.id}>
-            <TableCell>{schedule.trainId}</TableCell>
+            <TableCell>{schedule.train?.trainNumber || schedule.trainId}</TableCell>
+            <TableCell>
+              <Badge variant="outline">
+                {schedule.train?.type || 'Unknown'}
+              </Badge>
+            </TableCell>
             <TableCell>
               <Badge className={getStatusColor(schedule.status)}>
                 {schedule.isCancelled ? 'Cancelled' : schedule.status}

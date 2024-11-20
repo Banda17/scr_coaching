@@ -6,7 +6,9 @@ const localizer = momentLocalizer(moment);
 
 interface Schedule {
   id: number;
-  trainId: number;
+  trainId: number | null;
+  departureLocationId: number | null;
+  arrivalLocationId: number | null;
   scheduledDeparture: string;
   scheduledArrival: string;
   status: string;
