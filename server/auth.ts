@@ -39,11 +39,15 @@ declare global {
 export const requireRole = (...roles: UserRole[]) => {
   return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      res.writeHead(401);
+      res.end("Not authenticated");
+      return;
     }
     
     if (!roles.includes(req.user.role as UserRole)) {
-      return res.status(403).send("Insufficient permissions");
+      res.writeHead(403);
+      res.end("Insufficient permissions");
+      return;
     }
     
     next();
@@ -117,16 +121,22 @@ export function setupAuth(app: Express) {
     try {
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
-        return res
-          .status(400)
-          .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+        res.writeHead(400);
+        res.end("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+        return;
       }
 
-      const { username, password, role = UserRole.Viewer } = result.data;
+      const { username, password } = result.data;
+      // Set default role to viewer, only allow admin users to set other roles
+      const role = req.user?.role === UserRole.Admin && result.data.role 
+        ? result.data.role as UserRole 
+        : UserRole.Viewer;
 
       // Only admins can create other admin users
       if (role === UserRole.Admin && (!req.user || req.user.role !== UserRole.Admin)) {
-        return res.status(403).send("Only admins can create admin users");
+        res.writeHead(403);
+        res.end("Only admins can create admin users");
+        return;
       }
 
       // Check if user already exists
@@ -137,19 +147,21 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        res.writeHead(400);
+        res.end("Username already exists");
+        return;
       }
 
       // Hash the password
       const hashedPassword = await crypto.hash(password);
 
-      // Create the new user
+      // Create the new user with proper role typing
       const [newUser] = await db
         .insert(users)
         .values({
-          username,
+          username: username as string,
           password: hashedPassword,
-          role,
+          role: role
         })
         .returning();
 
@@ -158,7 +170,7 @@ export function setupAuth(app: Express) {
         if (err) {
           return next(err);
         }
-        return res.json({
+        res.json({
           message: "Registration successful",
           user: { id: newUser.id, username: newUser.username, role: newUser.role },
         });

@@ -3,8 +3,9 @@ import { neonConfig } from '@neondatabase/serverless';
 import ws from "ws";
 import * as schema from "@db/schema";
 import { type NeonDatabase } from 'drizzle-orm/neon-serverless';
-import { trains, locations } from "@db/schema";
-import { TrainType } from "@db/schema";
+import { trains, locations, users } from "@db/schema";
+import { TrainType, UserRole } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 // Configure Neon to use the ws package
 neonConfig.webSocketConstructor = ws;
