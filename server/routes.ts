@@ -89,7 +89,13 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/schedules", requireRole(UserRole.Admin, UserRole.Operator), async (req, res) => {
     try {
-      const newSchedule = await db.insert(schedules).values(req.body).returning();
+      const newSchedule = await db.insert(schedules).values({
+      ...req.body,
+      scheduledDeparture: new Date(req.body.scheduledDeparture),
+      scheduledArrival: new Date(req.body.scheduledArrival),
+      effectiveStartDate: new Date(req.body.effectiveStartDate),
+      effectiveEndDate: req.body.effectiveEndDate ? new Date(req.body.effectiveEndDate) : null
+    }).returning();
       res.json(newSchedule[0]);
     } catch (error) {
       res.status(400).json({ error: "Invalid schedule data" });

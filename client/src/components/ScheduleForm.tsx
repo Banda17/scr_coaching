@@ -65,10 +65,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: values.scheduledDeparture,
-        scheduledArrival: values.scheduledArrival,
-        effectiveStartDate: values.effectiveStartDate,
-        effectiveEndDate: values.effectiveEndDate
+        scheduledDeparture: new Date(values.scheduledDeparture),
+        scheduledArrival: new Date(values.scheduledArrival),
+        effectiveStartDate: new Date(values.effectiveStartDate),
+        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
       };
       
       const response = await fetch('/api/schedules', {
@@ -227,6 +227,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
               validate: (value) => {
                 if (!value) return true;
                 const startDate = form.getValues('effectiveStartDate');
+                if (!startDate) return 'Start date is required';
                 if (value <= startDate) {
                   return 'End date must be after start date';
                 }
