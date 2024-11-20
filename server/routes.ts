@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { db, checkDbConnection } from "../db";
 import { trains, locations, schedules } from "@db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -22,6 +22,10 @@ const excelRowSchema = z.object({
   scheduledArrival: z.string(),
   status: z.string().default('scheduled')
 });
+
+// The import statements were moved to the top of the file
+// The registerRoutes function is now properly defined and exported
+// The analytics endpoints are reorganized within the function
 
 export function registerRoutes(app: Express) {
   // Health check endpoint
@@ -171,5 +175,69 @@ export function registerRoutes(app: Express) {
   app.delete("/api/schedules/:id", async (req, res) => {
     await db.delete(schedules).where(eq(schedules.id, parseInt(req.params.id)));
     res.status(204).send();
+  });
+
+  // Analytics endpoints
+  app.get("/api/analytics/schedule-metrics", async (req, res) => {
+    try {
+      const totalSchedules = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schedules);
+
+      const delayedSchedules = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schedules)
+        .where(eq(schedules.status, 'delayed'));
+
+      const cancelledSchedules = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schedules)
+        .where(eq(schedules.isCancelled, true));
+
+      const trainUtilization = await db
+        .select({
+          trainId: trains.id,
+          trainNumber: trains.trainNumber,
+          scheduleCount: sql<number>`count(${schedules.id})`
+        })
+        .from(trains)
+        .leftJoin(schedules, eq(trains.id, schedules.trainId))
+        .groupBy(trains.id, trains.trainNumber);
+
+      const routePerformance = await db
+        .select({
+          departureId: locations.id,
+          departureName: locations.name,
+          arrivalId: schedules.arrivalLocationId,
+          totalTrips: sql<number>`count(${schedules.id})`,
+          delayedTrips: sql<number>`sum(case when ${schedules.status} = 'delayed' then 1 else 0 end)`,
+          avgDelayMinutes: sql<number>`avg(
+            case when ${schedules.actualArrival} is not null 
+            then extract(epoch from (${schedules.actualArrival} - ${schedules.scheduledArrival})) / 60 
+            else 0 end
+          )`,
+          peakHourTrips: sql<number>`sum(
+            case when extract(hour from ${schedules.scheduledDeparture}) between 7 and 9 
+            or extract(hour from ${schedules.scheduledDeparture}) between 16 and 18
+            then 1 else 0 end
+          )`
+        })
+        .from(locations)
+        .leftJoin(schedules, eq(locations.id, schedules.departureLocationId))
+        .groupBy(locations.id, locations.name, schedules.arrivalLocationId);
+
+      res.json({
+        overview: {
+          total: totalSchedules[0].count,
+          delayed: delayedSchedules[0].count,
+          cancelled: cancelledSchedules[0].count,
+        },
+        trainUtilization,
+        routePerformance,
+      });
+    } catch (error) {
+      console.error("[API] Failed to fetch analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
   });
 }
