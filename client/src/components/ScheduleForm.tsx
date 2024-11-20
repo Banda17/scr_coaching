@@ -172,8 +172,32 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Scheduled Arrival</label>
           <Input
             type="datetime-local"
-            {...form.register('scheduledArrival')}
+            {...form.register('scheduledArrival', {
+              required: 'Arrival time is required',
+              validate: (value) => {
+                if (!value) return 'Please select arrival time';
+                const arrivalDate = new Date(value);
+                if (isNaN(arrivalDate.getTime())) {
+                  return 'Invalid date format';
+                }
+                const departureDate = new Date(form.getValues('scheduledDeparture'));
+                if (arrivalDate <= departureDate) {
+                  return 'Arrival time must be after departure time';
+                }
+                return true;
+              },
+              setValueAs: (value: string) => value ? new Date(value) : null
+            })}
+            className={cn(
+              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+              form.formState.errors.scheduledArrival && "border-red-500"
+            )}
           />
+          {form.formState.errors.scheduledArrival && (
+            <span className="text-sm text-red-500">
+              {form.formState.errors.scheduledArrival.message}
+            </span>
+          )}
         </div>
 
         <div className="space-y-2">
