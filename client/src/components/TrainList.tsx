@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useSocket } from "../hooks/useSocket";
+import { Button } from "@/components/ui/button";
+import { Play, Pause, AlertTriangle } from "lucide-react";
 
 interface Train {
   id: number;
@@ -31,6 +34,7 @@ interface Schedule {
 }
 
 export default function TrainList({ schedules }: { schedules: Schedule[] }) {
+  const { updateSchedule } = useSocket();
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'running':
@@ -67,9 +71,50 @@ export default function TrainList({ schedules }: { schedules: Schedule[] }) {
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge className={getStatusColor(schedule.status)}>
-                {schedule.isCancelled ? 'Cancelled' : schedule.status}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className={getStatusColor(schedule.status)}>
+                  {schedule.isCancelled ? 'Cancelled' : schedule.status}
+                </Badge>
+                {!schedule.isCancelled && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSchedule({
+                        id: schedule.id,
+                        status: 'running',
+                        actualDeparture: new Date().toISOString()
+                      })}
+                      disabled={schedule.status === 'running'}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSchedule({
+                        id: schedule.id,
+                        status: 'delayed',
+                      })}
+                      disabled={schedule.status === 'delayed'}
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSchedule({
+                        id: schedule.id,
+                        status: 'completed',
+                        actualArrival: new Date().toISOString()
+                      })}
+                      disabled={schedule.status === 'completed'}
+                    >
+                      <Pause className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </TableCell>
             <TableCell>
               {format(new Date(schedule.scheduledDeparture), 'HH:mm')}
