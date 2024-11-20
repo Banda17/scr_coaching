@@ -30,6 +30,34 @@ The Railway Operations Management System is a comprehensive platform for managin
 - Password encryption
 
 ## System Requirements
+### Schedule State Transitions
+```mermaid
+stateDiagram-v2
+    [*] --> Scheduled
+    Scheduled --> Running: Start Train
+    Running --> Delayed: Report Delay
+    Running --> Completed: Complete Journey
+    Delayed --> Running: Resume
+    Delayed --> Completed: Complete Journey
+    Scheduled --> Cancelled: Cancel
+    Delayed --> Cancelled: Cancel
+    Running --> Cancelled: Cancel
+    Cancelled --> [*]
+    Completed --> [*]
+
+    note right of Running
+        Actual departure time recorded
+    end note
+    
+    note right of Completed
+        Actual arrival time recorded
+    end note
+    
+    note right of Delayed
+        Delay time calculated
+        Notifications triggered
+    end note
+```
 
 ### Server Requirements
 - Node.js 20.x or higher

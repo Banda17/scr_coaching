@@ -35,10 +35,54 @@ db/
    - Role-based access control for API endpoints
 
 2. **Real-time Updates Flow**
-   - Client connects via Socket.IO
-   - Server broadcasts schedule updates
-   - Optimistic UI updates with fallback
-   - Automatic reconnection handling
+```mermaid
+graph TD
+    A[Client] -->|Connect| B[WebSocket Server]
+    B -->|Connection Established| C[Subscribe to Updates]
+    
+    subgraph Connection Management
+### Data Import/Export Flow
+```mermaid
+graph TD
+    A[Excel File] -->|Upload| B[Import Handler]
+    B -->|Parse Excel| C[Data Validation]
+    C -->|Valid Data| D[Map to Schema]
+    D -->|Transform| E[Database Operations]
+    E -->|Success| F[Update UI]
+    E -->|Error| G[Show Error]
+    C -->|Invalid Data| H[Error Response]
+    
+    subgraph Data Validation
+        I[Check Required Fields]
+        J[Validate Data Types]
+        K[Verify References]
+        I --> J
+        J --> K
+    end
+    
+    subgraph Database Operations
+        L[Begin Transaction]
+        M[Insert Records]
+        N[Commit/Rollback]
+        L --> M
+        M --> N
+    end
+```
+        B -->|Connection Lost| D[Reconnection Logic]
+        D -->|Retry| B
+        D -->|Max Attempts| E[Show Error]
+    end
+
+    subgraph Schedule Updates
+        F[User Action] -->|Update Schedule| G[Optimistic UI Update]
+        G -->|Emit updateSchedule| B
+        B -->|Broadcast scheduleUpdated| H[Connected Clients]
+        H -->|Update React Query Cache| I[UI Refresh]
+        
+        J[Update Failed] -->|Revert Optimistic Update| K[Invalidate Cache]
+        K -->|Fetch Fresh Data| I
+    end
+</mermaid>
 
 3. **Data Management Flow**
    - API requests → Express routes → Database operations

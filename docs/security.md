@@ -3,11 +3,32 @@
 ## Authentication System
 
 ### Authentication Flow
-1. User submits credentials
-2. Server validates credentials
-3. Session created and cookie set
-4. Subsequent requests include session cookie
-5. Server validates session on each request
+```mermaid
+graph TD
+    A[User] -->|Submit Credentials| B[Login/Register Form]
+    B -->|POST /api/login or /api/register| C[Server]
+    C -->|Validate Credentials| D{Valid?}
+    D -->|Yes| E[Create Session]
+    D -->|No| F[Return Error]
+    E -->|Set Session Cookie| G[Return User Data]
+    G -->|Store in React Query Cache| H[Authenticated State]
+    H -->|Include Session Cookie| I[Protected API Requests]
+    I -->|Verify Session| J{Session Valid?}
+    J -->|Yes| K[Process Request]
+    J -->|No| L[Redirect to Login]
+
+    subgraph Role-Based Access
+        K -->|Check User Role| M{Has Permission?}
+        M -->|Yes| N[Allow Action]
+        M -->|No| O[Access Denied]
+    end
+
+    subgraph Session Management
+        P[Session Store] -->|Validate| J
+        E -->|Create| P
+        P -->|Cleanup| Q[Remove Expired Sessions]
+    end
+```
 
 ### Password Security
 - Passwords are hashed using scrypt
