@@ -39,15 +39,11 @@ declare global {
 export const requireRole = (...roles: UserRole[]) => {
   return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
     if (!req.isAuthenticated()) {
-      res.writeHead(401);
-      res.end("Not authenticated");
-      return;
+      return res.status(401).send("Not authenticated");
     }
     
     if (!roles.includes(req.user.role as UserRole)) {
-      res.writeHead(403);
-      res.end("Insufficient permissions");
-      return;
+      return res.status(403).send("Insufficient permissions");
     }
     
     next();

@@ -52,11 +52,7 @@ export { db };
 // Seed initial data
 export async function seedInitialData() {
   try {
-    // Create initial admin user
-    const adminPassword = await import('crypto').then(crypto => 
-      crypto.randomBytes(8).toString('hex')
-    );
-    
+    // Create initial admin user with known credentials
     const [existingAdmin] = await db.select()
       .from(users)
       .where(eq(users.username, 'admin'))
@@ -65,10 +61,10 @@ export async function seedInitialData() {
     if (!existingAdmin) {
       await db.insert(users).values({
         username: 'admin',
-        password: await import('./auth').then(auth => auth.crypto.hash(adminPassword)),
+        password: await import('./auth').then(auth => auth.crypto.hash('admin123')),
         role: 'admin'
       });
-      console.log("[Database] Created admin user with password:", adminPassword);
+      console.log("[Database] Created admin user with default credentials");
     }
     // Add sample trains
     const sampleTrains = [
