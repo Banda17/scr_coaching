@@ -35,10 +35,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       status: 'scheduled',
       isCancelled: false,
       runningDays: [true, true, true, true, true, true, true],
-      effectiveStartDate: new Date(),
+      effectiveStartDate: format(new Date(), 'yyyy-MM-dd'),
       effectiveEndDate: null,
-      scheduledDeparture: new Date(),
-      scheduledArrival: new Date()
+      scheduledDeparture: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      scheduledArrival: format(new Date(), "yyyy-MM-dd'T'HH:mm")
     }
   });
 
@@ -60,9 +60,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: new Date(values.scheduledDeparture),
-        scheduledArrival: new Date(values.scheduledArrival),
-        effectiveStartDate: new Date(values.effectiveStartDate),
+        scheduledDeparture: values.scheduledDeparture ? new Date(values.scheduledDeparture) : new Date(),
+        scheduledArrival: values.scheduledArrival ? new Date(values.scheduledArrival) : new Date(),
+        effectiveStartDate: values.effectiveStartDate ? new Date(values.effectiveStartDate) : new Date(),
         effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
       };
       
@@ -228,7 +228,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 onCheckedChange={(checked) => {
                   const runningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
                   const updatedDays = [...runningDays];
-                  updatedDays[day.value] = checked;
+                  updatedDays[day.value] = checked as boolean;
                   form.setValue('runningDays', updatedDays);
                 }}
               />
