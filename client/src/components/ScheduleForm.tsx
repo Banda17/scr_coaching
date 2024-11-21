@@ -165,9 +165,37 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
       await mutation.mutateAsync(formattedData);
     } catch (error) {
+      console.error("[Form] Schedule creation error:", error);
+      let errorMessage = "Failed to create schedule";
+      
+      if (error instanceof Error) {
+        try {
+          const errorData = JSON.parse(error.message);
+          errorMessage = errorData.error;
+          
+          // If there are specific fields with errors, highlight them
+          if (errorData.field) {
+            form.setError(errorData.field as any, {
+              type: 'server',
+              message: errorData.error
+            });
+          }
+          if (errorData.fields) {
+            errorData.fields.forEach((field: string) => {
+              form.setError(field as any, {
+                type: 'server',
+                message: errorData.error
+              });
+            });
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create schedule",
+        description: errorMessage,
         variant: "destructive"
       });
     }

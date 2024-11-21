@@ -89,16 +89,76 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/schedules", requireRole(UserRole.Admin, UserRole.Operator), async (req, res) => {
     try {
+      // Validate dates
+      const scheduledDeparture = new Date(req.body.scheduledDeparture);
+      const scheduledArrival = new Date(req.body.scheduledArrival);
+      const effectiveStartDate = new Date(req.body.effectiveStartDate);
+      const effectiveEndDate = req.body.effectiveEndDate ? new Date(req.body.effectiveEndDate) : null;
+
+      if (isNaN(scheduledDeparture.getTime())) {
+        return res.status(400).json({ 
+          error: "Invalid scheduled departure date",
+          field: "scheduledDeparture"
+        });
+      }
+
+      if (isNaN(scheduledArrival.getTime())) {
+        return res.status(400).json({ 
+          error: "Invalid scheduled arrival date",
+          field: "scheduledArrival"
+        });
+      }
+
+      if (scheduledArrival <= scheduledDeparture) {
+        return res.status(400).json({ 
+          error: "Scheduled arrival must be after scheduled departure",
+          fields: ["scheduledDeparture", "scheduledArrival"]
+        });
+      }
+
+      if (isNaN(effectiveStartDate.getTime())) {
+        return res.status(400).json({ 
+          error: "Invalid effective start date",
+          field: "effectiveStartDate"
+        });
+      }
+
+      if (effectiveEndDate && isNaN(effectiveEndDate.getTime())) {
+        return res.status(400).json({ 
+          error: "Invalid effective end date",
+          field: "effectiveEndDate"
+        });
+      }
+
+      if (effectiveEndDate && effectiveEndDate <= effectiveStartDate) {
+        return res.status(400).json({ 
+          error: "Effective end date must be after effective start date",
+          fields: ["effectiveStartDate", "effectiveEndDate"]
+        });
+      }
+
       const newSchedule = await db.insert(schedules).values({
-      ...req.body,
-      scheduledDeparture: new Date(req.body.scheduledDeparture),
-      scheduledArrival: new Date(req.body.scheduledArrival),
-      effectiveStartDate: new Date(req.body.effectiveStartDate),
-      effectiveEndDate: req.body.effectiveEndDate ? new Date(req.body.effectiveEndDate) : null
-    }).returning();
+        ...req.body,
+        scheduledDeparture,
+        scheduledArrival,
+        effectiveStartDate,
+        effectiveEndDate
+      }).returning();
+
       res.json(newSchedule[0]);
     } catch (error) {
-      res.status(400).json({ error: "Invalid schedule data" });
+      console.error("[API] Schedule creation error:", error);
+      if (error instanceof Error) {
+        res.status(400).json({ 
+          error: "Failed to create schedule",
+          details: error.message
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Internal server error",
+          details: "An unexpected error occurred"
+        });
+      }
     }
   });
 
