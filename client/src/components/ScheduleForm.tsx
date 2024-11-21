@@ -201,6 +201,18 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     }
   };
 
+      <div className="mb-4">
+        {Object.keys(form.formState.errors).length > 0 && (
+          <div className="p-3 rounded-md bg-red-50 border border-red-200">
+            <h3 className="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+            <ul className="mt-2 text-sm text-red-700">
+              {Object.entries(form.formState.errors).map(([key, error]) => (
+                <li key={key}>• {error.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -213,7 +225,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             placeholder="Enter train number"
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-              form.formState.errors.trainNumber && "border-red-500"
+              form.formState.errors.trainNumber ? "border-red-500 focus:ring-red-500" : "focus:ring-primary",
+              form.formState.dirtyFields.trainNumber && !form.formState.errors.trainNumber && "border-green-500"
             )}
           />
           {form.formState.errors.trainNumber && (
@@ -296,7 +309,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             {...form.register('scheduledDeparture')}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-              form.formState.errors.scheduledDeparture && "border-red-500"
+              form.formState.errors.scheduledDeparture ? "border-red-500 focus:ring-red-500" : "focus:ring-primary",
+              form.formState.dirtyFields.scheduledDeparture && !form.formState.errors.scheduledDeparture && "border-green-500"
             )}
           />
           {form.formState.errors.scheduledDeparture && (
@@ -313,7 +327,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             {...form.register('scheduledArrival')}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-              form.formState.errors.scheduledArrival && "border-red-500"
+              form.formState.errors.scheduledArrival ? "border-red-500 focus:ring-red-500" : "focus:ring-primary",
+              form.formState.dirtyFields.scheduledArrival && !form.formState.errors.scheduledArrival && "border-green-500"
             )}
           />
           {form.formState.errors.scheduledArrival && (
@@ -334,7 +349,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             defaultValue={format(new Date(), 'yyyy-MM-dd')}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-              form.formState.errors.effectiveStartDate && "border-red-500"
+              form.formState.errors.effectiveStartDate ? "border-red-500 focus:ring-red-500" : "focus:ring-primary",
+              form.formState.dirtyFields.effectiveStartDate && !form.formState.errors.effectiveStartDate && "border-green-500"
             )}
           />
           {form.formState.errors.effectiveStartDate && (
@@ -363,7 +379,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             })}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-              form.formState.errors.effectiveEndDate && "border-red-500"
+              form.formState.errors.effectiveEndDate ? "border-red-500 focus:ring-red-500" : "focus:ring-primary",
+              form.formState.dirtyFields.effectiveEndDate && !form.formState.errors.effectiveEndDate && "border-green-500"
             )}
           />
           {form.formState.errors.effectiveEndDate && (
