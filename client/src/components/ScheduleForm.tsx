@@ -45,30 +45,31 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
-    validate: (value) => {
-      if (!value) return 'Please select departure time';
-      if (!(value instanceof Date)) {
-        try {
-          const date = new Date(value);
-          if (isNaN(date.getTime())) {
-            return 'Invalid date format';
-          }
-        } catch (e) {
-          return 'Invalid date format';
-        }
-      }
-      return true;
-    }
+    setValueAs: (value: string) => new Date(value)
+  });
+
+  form.register('scheduledArrival', {
+    required: 'Arrival time is required',
+    setValueAs: (value: string) => new Date(value)
+  });
+
+  form.register('effectiveStartDate', {
+    required: 'Start date is required',
+    setValueAs: (value: string) => new Date(value)
+  });
+
+  form.register('effectiveEndDate', {
+    setValueAs: (value: string) => value ? new Date(value) : null
   });
 
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: new Date(values.scheduledDeparture),
-        scheduledArrival: new Date(values.scheduledArrival),
-        effectiveStartDate: new Date(values.effectiveStartDate),
-        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null
+        scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(values.scheduledDeparture),
+        scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(values.scheduledArrival),
+        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(values.effectiveStartDate),
+        effectiveEndDate: values.effectiveEndDate ? (values.effectiveEndDate instanceof Date ? values.effectiveEndDate : new Date(values.effectiveEndDate)) : null
       };
       
       const response = await fetch('/api/schedules', {
@@ -76,7 +77,12 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedValues)
       });
-      if (!response.ok) throw new Error('Failed to create schedule');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create schedule');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
