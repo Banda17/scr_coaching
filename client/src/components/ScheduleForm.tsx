@@ -203,13 +203,32 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
       <div className="mb-4">
         {Object.keys(form.formState.errors).length > 0 && (
-          <div className="p-3 rounded-md bg-red-50 border border-red-200">
-            <h3 className="text-sm font-medium text-red-800">Please correct the following errors:</h3>
-            <ul className="mt-2 text-sm text-red-700">
-              {Object.entries(form.formState.errors).map(([key, error]) => (
-                <li key={key}>• {error.message}</li>
-              ))}
-            </ul>
+          <div className="p-4 rounded-md bg-red-50 border border-red-200" role="alert" aria-live="polite">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-red-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+                <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
+                  {Object.entries(form.formState.errors).map(([key, error]) => (
+                    <li key={key}>{error.message}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        {form.formState.isSubmitSuccessful && !Object.keys(form.formState.errors).length && (
+          <div className="p-4 rounded-md bg-green-50 border border-green-200" role="alert" aria-live="polite">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <Check className="h-5 w-5 text-green-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">Schedule created successfully!</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -40,7 +40,7 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
 
   return (
     <Table>
-      <TableHead>
+      <TableHeader>
         <TableRow>
           <TableHead>Train ID</TableHead>
           <TableHead>Total Trips</TableHead>
@@ -48,7 +48,7 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
           <TableHead>Daily Avg</TableHead>
           <TableHead>Weekly Avg</TableHead>
         </TableRow>
-      </TableHead>
+      </TableHeader>
       <TableBody>
         {Object.values(trainStats).map((stat) => (
           <TableRow key={stat.trainId}>
