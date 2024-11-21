@@ -71,15 +71,37 @@ export function registerRoutes(app: Express) {
   app.get("/api/schedules", async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
-      const results = await db.select().from(schedules)
-        .where(
-          startDate && endDate
-            ? and(
-                gte(schedules.scheduledDeparture, new Date(startDate as string)),
-                lte(schedules.scheduledDeparture, new Date(endDate as string))
-              )
-            : undefined
-        );
+      const results = await db.select({
+        ...schedules,
+        train: {
+          id: trains.id,
+          trainNumber: trains.trainNumber,
+          type: trains.type,
+          description: trains.description
+        },
+        departureLocation: {
+          id: locations.id,
+          name: locations.name,
+          code: locations.code
+        },
+        arrivalLocation: {
+          id: locations.id,
+          name: locations.name,
+          code: locations.code
+        }
+      })
+      .from(schedules)
+      .leftJoin(trains, eq(schedules.trainId, trains.id))
+      .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
+      .leftJoin(locations, eq(schedules.arrivalLocationId, locations.id))
+      .where(
+        startDate && endDate
+          ? and(
+              gte(schedules.scheduledDeparture, new Date(startDate as string)),
+              lte(schedules.scheduledDeparture, new Date(endDate as string))
+            )
+          : undefined
+      );
       res.json(results);
     } catch (error) {
       console.error("[API] Failed to fetch schedules:", error);

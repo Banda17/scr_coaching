@@ -53,8 +53,8 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
                 {schedule.train?.type?.toUpperCase() || 'Unknown'}
               </Badge>
             </TableCell>
-            <TableCell>{schedule.departureLocationId}</TableCell>
-            <TableCell>{schedule.arrivalLocationId}</TableCell>
+            <TableCell>{schedule.departureLocation?.name || schedule.departureLocationId}</TableCell>
+            <TableCell>{schedule.arrivalLocation?.name || schedule.arrivalLocationId}</TableCell>
             <TableCell>
               {format(new Date(schedule.scheduledDeparture), 'HH:mm')}
             </TableCell>

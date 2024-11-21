@@ -78,7 +78,15 @@ export type Location = z.infer<typeof selectLocationSchema>;
 export const insertScheduleSchema = createInsertSchema(schedules);
 export const selectScheduleSchema = createSelectSchema(schedules);
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
-export type Schedule = z.infer<typeof selectScheduleSchema>;
+// Extended Schedule type with train information
+export interface Schedule extends z.infer<typeof selectScheduleSchema> {
+  train?: {
+    id: number;
+    trainNumber: string;
+    type: TrainType;
+    description?: string;
+  };
+}
 
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
