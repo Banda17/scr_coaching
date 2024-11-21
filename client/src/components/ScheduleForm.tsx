@@ -140,10 +140,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         throw new Error("Please select departure and arrival times");
       }
 
-      const scheduledDeparture = new Date(data.scheduledDeparture);
-      const scheduledArrival = new Date(data.scheduledArrival);
-      const effectiveStartDate = new Date(data.effectiveStartDate || new Date());
-      const effectiveEndDate = data.effectiveEndDate ? new Date(data.effectiveEndDate) : null;
+      // Dates are already converted to Date objects by the form registration
+      const scheduledDeparture = data.scheduledDeparture;
+      const scheduledArrival = data.scheduledArrival;
+      const effectiveStartDate = data.effectiveStartDate || new Date();
+      const effectiveEndDate = data.effectiveEndDate;
 
       if (scheduledArrival <= scheduledDeparture) {
         throw new Error("Arrival time must be after departure time");
@@ -298,12 +299,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Effective Start Date</label>
           <Input
             type="date"
-            {...form.register('effectiveStartDate')}
+            {...form.register('effectiveStartDate', {
+              setValueAs: (value: string) => value ? new Date(value) : new Date(),
+              required: 'Start date is required'
+            })}
             defaultValue={format(new Date(), 'yyyy-MM-dd')}
-            onChange={(e) => {
-              const date = e.target.value ? new Date(e.target.value) : undefined;
-              form.setValue('effectiveStartDate', date, { shouldValidate: true });
-            }}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
               form.formState.errors.effectiveStartDate && "border-red-500"
@@ -320,7 +320,19 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Effective End Date (Optional)</label>
           <Input
             type="date"
-            {...form.register('effectiveEndDate')}
+            {...form.register('effectiveEndDate', {
+              setValueAs: (value: string) => value ? new Date(value) : null,
+              validate: (value) => {
+                if (!value) return true;
+                const startDate = form.getValues('effectiveStartDate');
+                if (!startDate) return 'Start date is required';
+                const endDate = new Date(value);
+                if (endDate <= startDate) {
+                  return 'End date must be after start date';
+                }
+                return true;
+              }
+            })}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
               form.formState.errors.effectiveEndDate && "border-red-500"
