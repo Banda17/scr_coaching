@@ -51,9 +51,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       scheduledDeparture: new Date(),
       scheduledArrival: new Date(),
       trainNumber: '',
-      trainId: 0,
-      departureLocationId: 0,
-      arrivalLocationId: 0
+      trainId: 1,
+      departureLocationId: 1,
+      arrivalLocationId: 1
     },
     mode: 'onChange'
   });
@@ -383,11 +383,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch('runningDays')?.[day.value] ?? true}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = Array.isArray(form.getValues('runningDays')) 
-                    ? [...form.getValues('runningDays')] 
-                    : Array(7).fill(true);
-                  currentRunningDays[day.value] = checked === true;
-                  form.setValue('runningDays', currentRunningDays);
+                  const runningDays = [...(form.getValues('runningDays') || Array(7).fill(true))];
+                  runningDays[day.value] = checked === true;
+                  form.setValue('runningDays', runningDays, { shouldValidate: true });
                 }}
               />
               <label htmlFor={`day-${day.value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
