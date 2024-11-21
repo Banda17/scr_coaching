@@ -43,33 +43,35 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     mode: 'onChange'
   });
 
+  // Register date fields with proper conversion
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
-    setValueAs: (value: string) => new Date(value)
+    setValueAs: (value: string) => value ? new Date(value) : new Date()
   });
 
   form.register('scheduledArrival', {
     required: 'Arrival time is required',
-    setValueAs: (value: string) => new Date(value)
+    setValueAs: (value: string) => value ? new Date(value) : new Date()
   });
 
   form.register('effectiveStartDate', {
     required: 'Start date is required',
-    setValueAs: (value: string) => new Date(value)
+    setValueAs: (value: string) => value ? new Date(value) : new Date()
   });
 
   form.register('effectiveEndDate', {
-    setValueAs: (value: string) => value ? new Date(value) : null
+    setValueAs: (value: string | null) => value ? new Date(value) : null
   });
 
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
       const formattedValues = {
         ...values,
-        scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(values.scheduledDeparture),
-        scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(values.scheduledArrival),
-        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(values.effectiveStartDate),
-        effectiveEndDate: values.effectiveEndDate ? (values.effectiveEndDate instanceof Date ? values.effectiveEndDate : new Date(values.effectiveEndDate)) : null
+        scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(),
+        scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(),
+        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(),
+        effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null,
+        runningDays: Array.isArray(values.runningDays) ? values.runningDays : [true, true, true, true, true, true, true]
       };
       
       const response = await fetch('/api/schedules', {
@@ -253,10 +255,12 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch(`runningDays.${day.value}`)}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
-                  const updatedDays = [...currentRunningDays];
+                  const currentRunningDays = form.getValues('runningDays');
+                  const updatedDays = Array.isArray(currentRunningDays) 
+                    ? [...currentRunningDays] 
+                    : [true, true, true, true, true, true, true];
                   updatedDays[day.value] = checked === true;
-                  form.setValue('runningDays', updatedDays);
+                  form.setValue('runningDays', updatedDays, { shouldValidate: true });
                 }}
               />
               <label htmlFor={`day-${day.value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
