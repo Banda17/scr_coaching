@@ -293,9 +293,9 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             <div key={day.value} className="flex items-center space-x-2">
               <Checkbox
                 id={`day-${day.value}`}
-                checked={form.watch('runningDays')[day.value]}
+                checked={form.watch('runningDays')?.[day.value] ?? true}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = [...form.getValues('runningDays')];
+                  const currentRunningDays = Array.from(form.getValues('runningDays') || Array(7).fill(true));
                   currentRunningDays[day.value] = checked === true;
                   form.setValue('runningDays', currentRunningDays, { shouldValidate: true });
                 }}
