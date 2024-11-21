@@ -26,6 +26,61 @@
 
 ## Features Guide
 
+### Trains Management
+
+#### Overview
+The Trains view provides a comprehensive overview of all trains in the system:
+- Train number and basic details
+- Current operational status
+- Schedule statistics
+- Type categorization with visual indicators
+
+#### Table Structure
+1. **Train Number**
+   - Unique identifier for each train
+   - Sortable column
+   - Searchable field
+
+2. **Type**
+   - Visual badges indicating train category
+   - Color coding:
+     - Express (Blue)
+     - Local (Green)
+     - Freight (Amber)
+     - Special (Purple)
+
+3. **Description**
+   - Detailed train information
+   - Searchable field
+   - Sortable column
+
+4. **Current Status**
+   - Real-time operational status
+   - Visual indicators:
+     - Running (Green)
+     - Delayed (Amber)
+     - Idle (Gray)
+
+5. **Schedule Count**
+   - Total number of schedules assigned
+   - Sortable column
+
+#### Features
+1. **Filtering**
+   - Type-based filtering
+   - Text search across train number and description
+   - Real-time filter updates
+
+2. **Sorting**
+   - Click column headers to sort
+   - Ascending/descending toggle
+   - Multi-column sort support
+
+3. **Visual Indicators**
+   - Color-coded status badges
+   - Train type indicators
+   - Clear status visualization
+
 ### Dashboard
 The dashboard provides an overview of railway operations:
 - Active trains count
