@@ -36,11 +36,13 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       trainId: z.number().min(1, "Train selection is required"),
       departureLocationId: z.number().min(1, "Departure location is required"),
       arrivalLocationId: z.number().min(1, "Arrival location is required"),
-      effectiveStartDate: z.date().nullable(),
-      effectiveEndDate: z.date().nullable(),
+      effectiveStartDate: z.date(),
+      effectiveEndDate: z.date().nullable().optional(),
       scheduledDeparture: z.coerce.date(),
       scheduledArrival: z.coerce.date(),
-      runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true))
+      runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
+      status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled']).default('scheduled'),
+      isCancelled: z.boolean().default(false)
     })),
     defaultValues: {
       status: 'scheduled',
@@ -96,7 +98,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
       const response = await fetch('/api/schedules', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'credentials': 'include'
+        },
+        credentials: 'include',
         body: JSON.stringify(formattedValues)
       });
 
