@@ -36,8 +36,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       trainId: z.number().min(1, "Train selection is required"),
       departureLocationId: z.number().min(1, "Departure location is required"),
       arrivalLocationId: z.number().min(1, "Arrival location is required"),
-      effectiveStartDate: z.coerce.date(),
-      effectiveEndDate: z.coerce.date().nullable(),
+      effectiveStartDate: z.date().nullable(),
+      effectiveEndDate: z.date().nullable(),
       scheduledDeparture: z.coerce.date(),
       scheduledArrival: z.coerce.date(),
       runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true))
@@ -57,66 +57,30 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     },
     mode: 'onChange'
   });
-
-  // Register date fields with proper conversion
   form.register('effectiveStartDate', {
-    valueAsDate: true,
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
+    required: 'Start date is required'
   });
-
   form.register('effectiveEndDate', {
-    valueAsDate: true,
-    setValueAs: (value: string | null) => value ? new Date(value) : null
-  });
-
-  form.register('scheduledDeparture', {
-    valueAsDate: true,
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
-  });
-
-  form.register('scheduledArrival', {
-    valueAsDate: true,
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
-  });
-
-  // Register date fields with proper conversion
-  form.register('effectiveStartDate', {
-    required: 'Start date is required',
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
-  });
-
-  form.register('effectiveEndDate', {
-    setValueAs: (value: string | null) => value ? new Date(value) : null,
     validate: (value) => {
       if (!value) return true;
       const startDate = form.getValues('effectiveStartDate');
       if (!startDate) return 'Start date is required';
-      const endDate = new Date(value);
-      if (endDate <= startDate) {
+      const endDate = value;
+      if (endDate && endDate <= startDate) {
         return 'End date must be after start date';
       }
       return true;
     }
   });
 
-  // Register date fields with proper conversion
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
+    setValueAs: (value: string) => value ? new Date(value) : null
   });
 
   form.register('scheduledArrival', {
     required: 'Arrival time is required',
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
-  });
-
-  form.register('effectiveStartDate', {
-    required: 'Start date is required',
-    setValueAs: (value: string) => value ? new Date(value) : new Date()
-  });
-
-  form.register('effectiveEndDate', {
-    setValueAs: (value: string | null) => value ? new Date(value) : null
+    setValueAs: (value: string) => value ? new Date(value) : null
   });
 
   const mutation = useMutation({
@@ -125,11 +89,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         ...values,
         scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(),
         scheduledArrival: values.scheduledArrival instanceof Date ? values.scheduledArrival : new Date(),
-        effectiveStartDate: values.effectiveStartDate instanceof Date ? values.effectiveStartDate : new Date(),
+        effectiveStartDate: values.effectiveStartDate ? new Date(values.effectiveStartDate) : null,
         effectiveEndDate: values.effectiveEndDate ? new Date(values.effectiveEndDate) : null,
         runningDays: Array.isArray(values.runningDays) ? values.runningDays : [true, true, true, true, true, true, true]
       };
-      
+
       const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +104,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to create schedule');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -294,9 +258,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Scheduled Departure</label>
           <Input
             type="datetime-local"
-            {...form.register('scheduledDeparture', {
-              setValueAs: (value: string) => value ? new Date(value) : new Date()
-            })}
+            {...form.register('scheduledDeparture')}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
               form.formState.errors.scheduledDeparture && "border-red-500"
@@ -313,22 +275,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Scheduled Arrival</label>
           <Input
             type="datetime-local"
-            {...form.register('scheduledArrival', {
-              required: 'Arrival time is required',
-              validate: (value) => {
-                if (!value) return 'Please select arrival time';
-                const arrivalDate = new Date(value);
-                if (isNaN(arrivalDate.getTime())) {
-                  return 'Invalid date format';
-                }
-                const departureDate = new Date(form.getValues('scheduledDeparture'));
-                if (arrivalDate <= departureDate) {
-                  return 'Arrival time must be after departure time';
-                }
-                return true;
-              },
-              setValueAs: (value: string) => value ? new Date(value) : null
-            })}
+            {...form.register('scheduledArrival')}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
               form.formState.errors.scheduledArrival && "border-red-500"
@@ -348,29 +295,36 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             {...form.register('effectiveStartDate')}
             defaultValue={format(new Date(), 'yyyy-MM-dd')}
             onChange={(e) => {
-              const date = e.target.value ? new Date(e.target.value) : new Date();
+              const date = e.target.value ? new Date(e.target.value) : undefined;
               form.setValue('effectiveStartDate', date, { shouldValidate: true });
             }}
+            className={cn(
+              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+              form.formState.errors.effectiveStartDate && "border-red-500"
+            )}
           />
+          {form.formState.errors.effectiveStartDate && (
+            <span className="text-sm text-red-500">
+              {form.formState.errors.effectiveStartDate.message}
+            </span>
+          )}
         </div>
 
         <div className="space-y-2">
           <label>Effective End Date (Optional)</label>
           <Input
             type="date"
-            {...form.register('effectiveEndDate', {
-              valueAsDate: true,
-              validate: (value) => {
-                if (!value) return true;
-                const startDate = form.getValues('effectiveStartDate');
-                if (!startDate) return 'Start date is required';
-                if (value <= startDate) {
-                  return 'End date must be after start date';
-                }
-                return true;
-              }
-            })}
+            {...form.register('effectiveEndDate')}
+            className={cn(
+              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+              form.formState.errors.effectiveEndDate && "border-red-500"
+            )}
           />
+          {form.formState.errors.effectiveEndDate && (
+            <span className="text-sm text-red-500">
+              {form.formState.errors.effectiveEndDate.message}
+            </span>
+          )}
         </div>
       </div>
 

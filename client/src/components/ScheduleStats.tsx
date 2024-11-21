@@ -1,7 +1,8 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Check, X } from "lucide-react";
 import type { Schedule } from "@db/schema";
 
+// Ensure Schedule interface has necessary properties
 interface ScheduleStatsProps {
   schedules: Schedule[];
 }
@@ -10,8 +11,8 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
   // Group schedules by train
   const trainStats = schedules.reduce((acc, schedule) => {
     const trainId = schedule.trainId;
-    if (!trainId) return acc;
-    
+    if (trainId == null) return acc;  // Adjust to check nullish values
+
     if (!acc[trainId]) {
       acc[trainId] = {
         trainId,
@@ -21,14 +22,14 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
         weeklyFrequency: 0
       };
     }
-    
+
     acc[trainId].totalTrips++;
     acc[trainId].dailyFrequency = acc[trainId].totalTrips / 30; // Approximate daily average
     acc[trainId].weeklyFrequency = acc[trainId].totalTrips / 4; // Approximate weekly average
-    
+
     return acc;
-  }, {} as Record<number, {
-    trainId: number;
+  }, {} as Record<number | string, {  // Adjust index key type for safety
+    trainId: number | string;
     totalTrips: number;
     runningDays: boolean[];
     dailyFrequency: number;
@@ -39,7 +40,7 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
 
   return (
     <Table>
-      <TableHeader>
+      <TableHead>
         <TableRow>
           <TableHead>Train ID</TableHead>
           <TableHead>Total Trips</TableHead>
@@ -47,7 +48,7 @@ export default function ScheduleStats({ schedules }: ScheduleStatsProps) {
           <TableHead>Daily Avg</TableHead>
           <TableHead>Weekly Avg</TableHead>
         </TableRow>
-      </TableHeader>
+      </TableHead>
       <TableBody>
         {Object.values(trainStats).map((stat) => (
           <TableRow key={stat.trainId}>

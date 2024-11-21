@@ -29,7 +29,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function TrainsPage() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all"); // Default to 'all'
   const [sortConfig, setSortConfig] = useState<{
     field: SortField;
     order: SortOrder;
@@ -67,7 +67,7 @@ export default function TrainsPage() {
         train.trainNumber.toLowerCase().includes(search.toLowerCase()) ||
         train.description?.toLowerCase().includes(search.toLowerCase())
       )
-      .filter(train => !typeFilter || train.type === typeFilter)
+      .filter(train => typeFilter === 'all' || train.type === typeFilter) // Update to check for 'all'
       .sort((a, b) => {
         const order = sortConfig.order === 'asc' ? 1 : -1;
         if (sortConfig.field === 'scheduleCount') {
@@ -143,7 +143,7 @@ export default function TrainsPage() {
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem> {/* Use 'all' here */}
             <SelectItem value="express">Express</SelectItem>
             <SelectItem value="local">Local</SelectItem>
             <SelectItem value="freight">Freight</SelectItem>
