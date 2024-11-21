@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchTrains, fetchLocations } from "../lib/api";
+import { fetchTrains, fetchLocations, fetchSchedules } from "../lib/api";
 import ScheduleForm from "../components/ScheduleForm";
+import ScheduleStats from "../components/ScheduleStats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ExportButton from "../components/ExportButton";
 import { ArrowLeft } from "lucide-react";
@@ -17,6 +18,11 @@ export default function Schedules() {
   const { data: locations } = useQuery({
     queryKey: ['locations'],
     queryFn: fetchLocations
+  });
+
+  const { data: schedules } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: fetchSchedules
   });
 
   return (
@@ -37,17 +43,28 @@ export default function Schedules() {
           </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Schedule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScheduleForm
-            trains={trains || []}
-            locations={locations || []}
-          />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create New Schedule</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScheduleForm
+              trains={trains || []}
+              locations={locations || []}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Schedule Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScheduleStats schedules={schedules || []} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
