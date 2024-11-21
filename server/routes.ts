@@ -87,6 +87,33 @@ export function registerRoutes(app: Express) {
     }
   });
 
+// Check for schedule conflicts
+async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date, scheduledArrival: Date, effectiveStartDate: Date, effectiveEndDate: Date | null, runningDays: boolean[], excludeScheduleId?: number) {
+  const overlappingSchedules = await db.select().from(schedules)
+    .where(
+      sql`
+        train_id = ${trainId}
+        AND is_cancelled = false
+        AND (
+          (scheduled_departure, scheduled_arrival) OVERLAPS 
+          (${scheduledDeparture}, ${scheduledArrival})
+        )
+        AND (
+          effective_start_date <= ${effectiveEndDate || sql`'9999-12-31'`}
+          AND (effective_end_date IS NULL OR effective_end_date >= ${effectiveStartDate})
+        )
+        ${excludeScheduleId ? sql`AND id != ${excludeScheduleId}` : sql``}
+      `
+    );
+
+  // Check running days overlap
+  return overlappingSchedules.filter(schedule => {
+    // If either schedule runs on any of the same days, there's a potential conflict
+    return schedule.runningDays.some((runs: boolean, index: number) => 
+      runs && runningDays[index]
+    );
+  });
+}
   app.post("/api/schedules", requireRole(UserRole.Admin, UserRole.Operator), async (req, res) => {
     try {
       // Validate dates
@@ -134,6 +161,28 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ 
           error: "Effective end date must be after effective start date",
           fields: ["effectiveStartDate", "effectiveEndDate"]
+        });
+      }
+
+      // Check for schedule conflicts
+      const conflicts = await checkScheduleConflicts(
+        req.body.trainId,
+        scheduledDeparture,
+        scheduledArrival,
+        effectiveStartDate,
+        effectiveEndDate,
+        req.body.runningDays
+      );
+
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          error: "Schedule conflict detected",
+          details: "This train already has a schedule that overlaps with the proposed time and dates",
+          conflicts: conflicts.map(c => ({
+            id: c.id,
+            scheduledDeparture: c.scheduledDeparture,
+            scheduledArrival: c.scheduledArrival
+          }))
         });
       }
 

@@ -86,8 +86,15 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     setValueAs: (value: string) => value ? new Date(value) : null
   });
 
+  const [conflicts, setConflicts] = useState<Array<{
+    id: number;
+    scheduledDeparture: string;
+    scheduledArrival: string;
+  }>>([]);
+
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
+      setConflicts([]);
       const formattedValues = {
         ...values,
         scheduledDeparture: values.scheduledDeparture instanceof Date ? values.scheduledDeparture : new Date(),
@@ -109,6 +116,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 409) {
+          setConflicts(error.conflicts);
+          throw new Error(error.details || error.error);
+        }
         throw new Error(error.message || 'Failed to create schedule');
       }
 
@@ -192,6 +203,27 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         } catch {
           errorMessage = error.message;
         }
+      {conflicts.length > 0 && (
+        <div className="p-4 rounded-md bg-amber-50 border border-amber-200" role="alert" aria-live="polite">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-amber-800">Schedule conflicts detected:</h3>
+              <ul className="mt-2 text-sm text-amber-700 list-disc list-inside">
+                {conflicts.map((conflict, index) => (
+                  <li key={conflict.id}>
+                    Conflict with schedule #{conflict.id}: 
+                    {format(new Date(conflict.scheduledDeparture), "MMM d, yyyy HH:mm")} - 
+                    {format(new Date(conflict.scheduledArrival), "HH:mm")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
       }
       
       toast({
