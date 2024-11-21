@@ -29,8 +29,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<InsertSchedule>({
-    resolver: zodResolver(insertScheduleSchema),
+  const form = useForm<InsertSchedule & { trainNumber: string }>({
+    resolver: zodResolver(insertScheduleSchema.extend({
+      trainNumber: z.string().min(1, "Train number is required")
+    })),
     defaultValues: {
       status: 'scheduled',
       isCancelled: false,
@@ -38,7 +40,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       effectiveStartDate: new Date(),
       effectiveEndDate: null,
       scheduledDeparture: new Date(),
-      scheduledArrival: new Date()
+      scheduledArrival: new Date(),
+      trainNumber: ''
     },
     mode: 'onChange'
   });
@@ -108,10 +111,35 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
+          <label>Train Number</label>
+          <Input
+            {...form.register('trainNumber', {
+              required: 'Train number is required'
+            })}
+            placeholder="Enter train number"
+            className={cn(
+              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+              form.formState.errors.trainNumber && "border-red-500"
+            )}
+          />
+          {form.formState.errors.trainNumber && (
+            <span className="text-sm text-red-500">
+              {form.formState.errors.trainNumber.message}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2">
           <label>Train</label>
           <Select
             name="trainId"
-            onValueChange={(value) => form.setValue('trainId', parseInt(value))}
+            onValueChange={(value) => {
+              form.setValue('trainId', parseInt(value));
+              const selectedTrain = trains.find(t => t.id === parseInt(value));
+              if (selectedTrain) {
+                form.setValue('trainNumber', selectedTrain.trainNumber);
+              }
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select train" />
