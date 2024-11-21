@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', value: 0 },
