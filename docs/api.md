@@ -95,8 +95,25 @@ Content-Type: application/json
   "scheduledDeparture": "ISO date string",
   "scheduledArrival": "ISO date string",
   "status": "string",
-  "isCancelled": "boolean"
+  "isCancelled": "boolean",
+  "effectiveStartDate": "ISO date string",
+  "effectiveEndDate": "ISO date string | null",
+  "runningDays": "boolean[7]"  // Array of 7 booleans for each day of week
 }
+
+Response (409 Conflict):
+```json
+{
+  "error": "Schedule conflict detected",
+  "details": "This train already has a schedule that overlaps with the proposed time and dates",
+  "conflicts": [
+    {
+      "id": "number",
+      "scheduledDeparture": "ISO date string",
+      "scheduledArrival": "ISO date string"
+    }
+  ]
+}```
 ```
 
 ### Update Schedule

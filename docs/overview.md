@@ -5,10 +5,14 @@ The Railway Operations Management System is a comprehensive platform for managin
 ## Core Features
 
 ### 1. Schedule Management
-- Create and manage train schedules
-- Timeline visualization
-- Train list view
-- Excel data import/export
+- Create and manage train schedules with date validation
+- Timeline visualization with real-time updates
+- Train list view with status indicators
+- Excel data import/export capabilities
+- Schedule conflict detection and validation
+- Support for multiple railway locations (DVD, GDR.KI, NS, BZA, MTM, COA)
+- Running days configuration
+- Effective date range management
 
 ### 2. Real-time Operations
 - Live train status updates via WebSocket

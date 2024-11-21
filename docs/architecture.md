@@ -88,6 +88,9 @@ graph TD
    - API requests → Express routes → Database operations
    - Schedule updates → WebSocket broadcasts → Client updates
    - Excel import → Data validation → Batch database insertion
+   - Schedule validation → Conflict detection → Error handling
+   - Form validation → Date conversion → Database operations
+   - Real-time updates → Optimistic UI → WebSocket sync
 
 ## Database Schema
 
