@@ -18,6 +18,12 @@ interface ScheduleFormProps {
   locations: Location[];
 }
 
+interface ExtraLocation {
+  locationId: number;
+  arrivalTime: string;
+  departureTime: string;
+}
+
 interface ImportantStation {
   locationId: number;
   arrivalTime: string;
@@ -30,7 +36,14 @@ const importantStationSchema = z.object({
   departureTime: z.string()
 }).array().default([]);
 
+const extraLocationSchema = z.object({
+  locationId: z.number(),
+  arrivalTime: z.string(),
+  departureTime: z.string()
+}).array().default([]);
+
 const scheduleSchema = insertScheduleSchema.extend({
+  extraLocations: extraLocationSchema,
   trainNumber: z.string().min(1, "Train number is required"),
   trainId: z.number().min(1, "Train selection is required"),
   departureLocationId: z.number().min(1, "Departure location is required"),
@@ -65,6 +78,7 @@ const DAYS_OF_WEEK = [
 export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
   const [selectedTrain, setSelectedTrain] = useState<Train | null>(null);
   const [importantStations, setImportantStations] = useState<ImportantStation[]>([]);
+  const [extraLocations, setExtraLocations] = useState<ExtraLocation[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -116,6 +130,102 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Extra Locations */}
+        <div className="col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <label className="text-lg font-medium">Additional Locations</label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const newLocation: ExtraLocation = {
+                  locationId: 0,
+                  arrivalTime: '',
+                  departureTime: ''
+                };
+                setExtraLocations([...extraLocations, newLocation]);
+                const currentLocations = form.getValues('extraLocations') || [];
+                form.setValue('extraLocations', [...currentLocations, newLocation]);
+              }}
+            >
+              + Add Location
+            </Button>
+          </div>
+          
+          {extraLocations.map((location, index) => (
+            <div key={index} className="grid grid-cols-3 gap-4 items-center mb-4 p-4 border rounded-lg">
+              <Select
+                value={location.locationId.toString()}
+                onValueChange={(value) => {
+                  const newLocations = [...extraLocations];
+                  newLocations[index] = {
+                    ...newLocations[index],
+                    locationId: parseInt(value)
+                  };
+                  setExtraLocations(newLocations);
+                  form.setValue('extraLocations', newLocations);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id.toString()}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Input
+                type="time"
+                value={location.arrivalTime}
+                onChange={(e) => {
+                  const newLocations = [...extraLocations];
+                  newLocations[index] = {
+                    ...newLocations[index],
+                    arrivalTime: e.target.value
+                  };
+                  setExtraLocations(newLocations);
+                  form.setValue('extraLocations', newLocations);
+                }}
+                placeholder="Arrival Time"
+              />
+              
+              <div className="flex gap-2">
+                <Input
+                  type="time"
+                  value={location.departureTime}
+                  onChange={(e) => {
+                    const newLocations = [...extraLocations];
+                    newLocations[index] = {
+                      ...newLocations[index],
+                      departureTime: e.target.value
+                    };
+                    setExtraLocations(newLocations);
+                    form.setValue('extraLocations', newLocations);
+                  }}
+                  placeholder="Departure Time"
+                />
+                
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    const newLocations = [...extraLocations];
+                    newLocations.splice(index, 1);
+                    setExtraLocations(newLocations);
+                    form.setValue('extraLocations', newLocations);
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-2">
           <label>Train</label>
           <Select
