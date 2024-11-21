@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchTrains, fetchLocations, fetchSchedules } from "../lib/api";
 import ScheduleForm from "../components/ScheduleForm";
 import ScheduleStats from "../components/ScheduleStats";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import ExportButton from "../components/ExportButton";
 import { ArrowLeft } from "lucide-react";
 import ImportSchedules from "../components/ImportSchedules";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Schedules() {
   const { data: trains } = useQuery({
@@ -38,33 +39,30 @@ export default function Schedules() {
           <h1 className="text-3xl font-bold">Schedule Management</h1>
         </div>
         <div className="flex items-center gap-4">
-            <ImportSchedules />
-            <ExportButton />
-          </div>
+          <ImportSchedules />
+          <ExportButton />
+        </div>
       </div>
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <Tabs defaultValue="create" className="w-full">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="create">Create Schedule</TabsTrigger>
+            <TabsTrigger value="statistics">Schedule Statistics</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="create" className="mt-4">
             <ScheduleForm
               trains={trains || []}
               locations={locations || []}
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Schedule Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </TabsContent>
+          
+          <TabsContent value="statistics" className="mt-4">
             <ScheduleStats schedules={schedules || []} />
-          </CardContent>
-        </Card>
-      </div>
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 }
