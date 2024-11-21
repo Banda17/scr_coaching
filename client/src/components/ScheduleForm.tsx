@@ -42,8 +42,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       effectiveEndDate: null,
       scheduledDeparture: new Date(),
       scheduledArrival: new Date(),
-      trainNumber: ''
-    },
+      trainNumber: '',
+      trainId: undefined,
+      departureLocationId: undefined,
+      arrivalLocationId: undefined
+    } as const,
     mode: 'onChange'
   });
 
@@ -250,8 +253,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             type="date"
             {...form.register('effectiveStartDate', {
               required: 'Start date is required',
-              valueAsDate: true
+              valueAsDate: true,
+              setValueAs: (value: string) => value ? new Date(value) : new Date()
             })}
+            defaultValue={format(new Date(), 'yyyy-MM-dd')}
           />
         </div>
 
@@ -284,10 +289,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch(`runningDays.${day.value}`)}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = form.getValues('runningDays');
-                  const updatedDays = Array.isArray(currentRunningDays) 
-                    ? [...currentRunningDays] 
-                    : [true, true, true, true, true, true, true];
+                  const currentRunningDays = form.getValues('runningDays') ?? [true, true, true, true, true, true, true];
+                  const updatedDays = [...currentRunningDays];
                   updatedDays[day.value] = checked === true;
                   form.setValue('runningDays', updatedDays, { shouldValidate: true });
                 }}

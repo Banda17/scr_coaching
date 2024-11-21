@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchTrains, fetchLocations } from "../lib/api";
+import { fetchTrains, fetchLocations, fetchSchedules } from "../lib/api";
 import ScheduleForm from "../components/ScheduleForm";
 import { Card } from "@/components/ui/card";
 import ExportButton from "../components/ExportButton";
