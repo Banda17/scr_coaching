@@ -39,6 +39,14 @@ author = "agent"
 task = "workflow.run"
 args = "Railway Operations System"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Documentation Verification"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Documentation Review"
+
 [[workflows.workflow]]
 name = "Railway Operations System"
 author = "agent"
@@ -52,4 +60,32 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
-waitForPort = 5000
+waitForPort = 3000
+
+[[workflows.workflow]]
+name = "Documentation Verification"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "ls -l docs/database.md"
+
+[[workflows.workflow]]
+name = "Documentation Review"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cat docs/database.md"
