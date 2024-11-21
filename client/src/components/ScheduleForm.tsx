@@ -46,7 +46,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       trainId: undefined,
       departureLocationId: undefined,
       arrivalLocationId: undefined
-    },
+    } as const,
     mode: 'onChange'
   });
 
@@ -154,7 +154,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                   key={train.id} 
                   value={train.id.toString()}
                 >
-                  {train.trainNumber}
+                  {`${train.trainNumber}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -256,10 +256,13 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             type="date"
             {...form.register('effectiveStartDate', {
               required: 'Start date is required',
-              valueAsDate: true,
-              setValueAs: (value: string) => value ? new Date(value) : new Date()
+              valueAsDate: true
             })}
             defaultValue={format(new Date(), 'yyyy-MM-dd')}
+            onChange={(e) => {
+              const date = e.target.value ? new Date(e.target.value) : new Date();
+              form.setValue('effectiveStartDate', date);
+            }}
           />
         </div>
 
@@ -290,11 +293,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             <div key={day.value} className="flex items-center space-x-2">
               <Checkbox
                 id={`day-${day.value}`}
-                checked={form.watch('runningDays')?.[day.value] ?? true}
+                checked={form.watch('runningDays')[day.value]}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = Array.from(form.getValues('runningDays') ?? Array(7).fill(true));
+                  const currentRunningDays = [...form.getValues('runningDays')];
                   currentRunningDays[day.value] = checked === true;
-                  form.setValue('runningDays', currentRunningDays);
+                  form.setValue('runningDays', currentRunningDays, { shouldValidate: true });
                 }}
               />
               <label htmlFor={`day-${day.value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
