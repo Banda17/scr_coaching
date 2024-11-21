@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Dashboard from "./pages/Dashboard";
 import Schedules from "./pages/Schedules";
 import Analytics from "./pages/Analytics";
+import ScheduleStatsPage from "./pages/ScheduleStatsPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/schedules" component={Schedules} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/statistics" component={ScheduleStatsPage} />
         <Route>404 Page Not Found</Route>
       </Switch>
     </Layout>

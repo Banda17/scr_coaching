@@ -1,24 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchTrains, fetchLocations } from "../lib/api";
-import ScheduleForm from "../components/ScheduleForm";
-import { Card } from "@/components/ui/card";
+import { fetchSchedules } from "../lib/api";
+import ScheduleStats from "../components/ScheduleStats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ExportButton from "../components/ExportButton";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BarChart } from "lucide-react";
 import ImportSchedules from "../components/ImportSchedules";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
-export default function Schedules() {
-  const { data: trains } = useQuery({
-    queryKey: ['trains'],
-    queryFn: fetchTrains
-  });
-
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: fetchLocations
-  });
-
+export default function ScheduleStatsPage() {
   const { data: schedules } = useQuery({
     queryKey: ['schedules'],
     queryFn: fetchSchedules
@@ -34,7 +24,10 @@ export default function Schedules() {
               Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Schedule Management</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <BarChart className="h-8 w-8" />
+            Schedule Statistics
+          </h1>
         </div>
         <div className="flex items-center gap-4">
           <ImportSchedules />
@@ -42,11 +35,13 @@ export default function Schedules() {
         </div>
       </div>
 
-      <Card className="p-6">
-        <ScheduleForm
-          trains={trains || []}
-          locations={locations || []}
-        />
+      <Card>
+        <CardHeader>
+          <CardTitle>Schedule Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScheduleStats schedules={schedules || []} />
+        </CardContent>
       </Card>
     </div>
   );

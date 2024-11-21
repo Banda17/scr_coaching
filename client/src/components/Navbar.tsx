@@ -13,6 +13,7 @@ export default function Navbar() {
   const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/schedules", label: "Schedules", icon: Calendar },
+    { href: "/statistics", label: "Statistics", icon: BarChart },
     { href: "/analytics", label: "Analytics", icon: BarChart },
   ];
 
