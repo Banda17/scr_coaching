@@ -32,7 +32,15 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
   const form = useForm<InsertSchedule & { trainNumber: string }>({
     resolver: zodResolver(insertScheduleSchema.extend({
-      trainNumber: z.string().min(1, "Train number is required")
+      trainNumber: z.string().min(1, "Train number is required"),
+      trainId: z.number().min(0, "Train selection is required"),
+      departureLocationId: z.number().min(0, "Departure location is required"),
+      arrivalLocationId: z.number().min(0, "Arrival location is required"),
+      effectiveStartDate: z.date(),
+      effectiveEndDate: z.date().nullable(),
+      scheduledDeparture: z.date(),
+      scheduledArrival: z.date(),
+      runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true))
     })),
     defaultValues: {
       status: 'scheduled',
@@ -43,10 +51,10 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       scheduledDeparture: new Date(),
       scheduledArrival: new Date(),
       trainNumber: '',
-      trainId: undefined,
-      departureLocationId: undefined,
-      arrivalLocationId: undefined
-    } as const,
+      trainId: 0,
+      departureLocationId: 0,
+      arrivalLocationId: 0
+    },
     mode: 'onChange'
   });
 
@@ -131,8 +139,50 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     }
   });
 
+  const onSubmit = async (data: InsertSchedule & { trainNumber: string }) => {
+    try {
+      if (!data.trainId || !data.departureLocationId || !data.arrivalLocationId) {
+        throw new Error("Please select train and locations");
+      }
+
+      if (!data.scheduledDeparture || !data.scheduledArrival) {
+        throw new Error("Please select departure and arrival times");
+      }
+
+      const scheduledDeparture = new Date(data.scheduledDeparture);
+      const scheduledArrival = new Date(data.scheduledArrival);
+      const effectiveStartDate = new Date(data.effectiveStartDate || new Date());
+      const effectiveEndDate = data.effectiveEndDate ? new Date(data.effectiveEndDate) : null;
+
+      if (scheduledArrival <= scheduledDeparture) {
+        throw new Error("Arrival time must be after departure time");
+      }
+
+      if (effectiveEndDate && effectiveEndDate <= effectiveStartDate) {
+        throw new Error("End date must be after start date");
+      }
+
+      const formattedData = {
+        ...data,
+        scheduledDeparture,
+        scheduledArrival,
+        effectiveStartDate,
+        effectiveEndDate,
+        runningDays: data.runningDays || Array(7).fill(true)
+      };
+
+      await mutation.mutateAsync(formattedData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create schedule",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label>Train Number</label>
