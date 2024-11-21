@@ -81,10 +81,10 @@ export async function seedInitialData() {
     }
     // Add sample trains
     const sampleTrains = [
-      { trainNumber: 'EXP101', description: 'Daily Express', type: TrainType.Express },
-      { trainNumber: 'LOC201', description: 'Local Service', type: TrainType.Local },
-      { trainNumber: 'FRT301', description: 'Cargo Transport', type: TrainType.Freight },
-      { trainNumber: 'SPL401', description: 'Holiday Special', type: TrainType.Special },
+      { trainNumber: 'TRC101', description: 'TRC Service', type: TrainType.TRC },
+      { trainNumber: 'SPIC201', description: 'SPIC Service', type: TrainType.SPIC },
+      { trainNumber: 'SPL301', description: 'SPL Transport', type: TrainType.SPL },
+      { trainNumber: 'SLN401', description: 'SALOON Service', type: TrainType.SALOON },
     ];
 
     for (const train of sampleTrains) {

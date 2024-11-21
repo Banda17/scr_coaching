@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, json } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -20,10 +20,10 @@ export const users = pgTable("users", {
 });
 
 export const TrainType = {
-  Express: 'express',
-  Local: 'local',
-  Freight: 'freight',
-  Special: 'special'
+  TRC: 'trc',
+  SPIC: 'spic',
+  SPL: 'spl',
+  SALOON: 'saloon'
 } as const;
 
 export type TrainType = typeof TrainType[keyof typeof TrainType];
@@ -56,6 +56,13 @@ export const schedules = pgTable("schedules", {
   runningDays: boolean("running_days").array().notNull().default([true, true, true, true, true, true, true]),
   effectiveStartDate: timestamp("effective_start_date").notNull().default(sql`CURRENT_DATE`),
   effectiveEndDate: timestamp("effective_end_date"),
+  // New fields for TRC and SALOON trains
+  shortRouteLocationId: integer("short_route_location_id").references(() => locations.id),
+  remarks: text("remarks"),
+  // New fields for SPIC and SPL trains
+  takingOverTime: timestamp("taking_over_time"),
+  handingOverTime: timestamp("handing_over_time"),
+  importantStations: json("important_stations").default([]), // Array of {locationId, arrivalTime, departureTime}
 });
 
 export const insertTrainSchema = createInsertSchema(trains);
