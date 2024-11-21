@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useState } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -86,11 +87,13 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
     setValueAs: (value: string) => value ? new Date(value) : null
   });
 
-  const [conflicts, setConflicts] = useState<Array<{
+  interface ScheduleConflict {
     id: number;
     scheduledDeparture: string;
     scheduledArrival: string;
-  }>>([]);
+  }
+
+  const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
 
   const mutation = useMutation({
     mutationFn: async (values: InsertSchedule) => {
