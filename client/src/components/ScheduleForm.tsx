@@ -51,6 +51,26 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
   });
 
   // Register date fields with proper conversion
+  form.register('effectiveStartDate', {
+    required: 'Start date is required',
+    setValueAs: (value: string) => value ? new Date(value) : new Date()
+  });
+
+  form.register('effectiveEndDate', {
+    setValueAs: (value: string | null) => value ? new Date(value) : null,
+    validate: (value) => {
+      if (!value) return true;
+      const startDate = form.getValues('effectiveStartDate');
+      if (!startDate) return 'Start date is required';
+      const endDate = new Date(value);
+      if (endDate <= startDate) {
+        return 'End date must be after start date';
+      }
+      return true;
+    }
+  });
+
+  // Register date fields with proper conversion
   form.register('scheduledDeparture', {
     required: 'Departure time is required',
     setValueAs: (value: string) => value ? new Date(value) : new Date()
@@ -254,14 +274,11 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           <label>Effective Start Date</label>
           <Input
             type="date"
-            {...form.register('effectiveStartDate', {
-              required: 'Start date is required',
-              valueAsDate: true
-            })}
+            {...form.register('effectiveStartDate')}
             defaultValue={format(new Date(), 'yyyy-MM-dd')}
             onChange={(e) => {
               const date = e.target.value ? new Date(e.target.value) : new Date();
-              form.setValue('effectiveStartDate', date);
+              form.setValue('effectiveStartDate', date, { shouldValidate: true });
             }}
           />
         </div>
@@ -295,7 +312,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 id={`day-${day.value}`}
                 checked={form.watch('runningDays')?.[day.value] ?? true}
                 onCheckedChange={(checked) => {
-                  const currentRunningDays = Array.from(form.getValues('runningDays') || Array(7).fill(true));
+                  const currentRunningDays = [...(form.getValues('runningDays') || Array(7).fill(true))];
                   currentRunningDays[day.value] = checked === true;
                   form.setValue('runningDays', currentRunningDays, { shouldValidate: true });
                 }}
