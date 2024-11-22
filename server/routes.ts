@@ -146,7 +146,10 @@ export function registerRoutes(app: Express) {
       .from(schedules)
       .leftJoin(trains, eq(schedules.trainId, trains.id))
       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
-      .leftJoin(locations.alias('arrival_locations'), eq(schedules.arrivalLocationId, sql`arrival_locations.id`))
+      .leftJoin(
+  locations as arrival_locations, 
+  eq(schedules.arrivalLocationId, arrival_locations.id)
+)
       .where(
         startDate && endDate
           ? and(
