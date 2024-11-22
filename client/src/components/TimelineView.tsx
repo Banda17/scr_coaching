@@ -36,7 +36,9 @@ export default function TimelineView({ schedules }: TimelineViewProps) {
 
     return [{
       id: schedule.id,
-      title: `Train ${schedule.trainId}`,
+      title: schedule.train?.trainNumber 
+        ? `Train ${schedule.train.trainNumber} - ${schedule.train.type?.toUpperCase()}`
+        : `Train ${schedule.trainId}`,
       start: schedule.scheduledDeparture instanceof Date 
         ? schedule.scheduledDeparture 
         : new Date(schedule.scheduledDeparture),
@@ -66,15 +68,29 @@ export default function TimelineView({ schedules }: TimelineViewProps) {
   };
 
   return (
-    <div style={{ height: '500px' }}>
+    <div className="h-[700px] max-w-full mx-auto bg-background rounded-lg shadow-sm border">
       <Calendar
         localizer={localizer}
         events={events}
-        defaultView={Views.DAY}
-        views={['day', 'week']}
+        defaultView={Views.MONTH}
+        views={['day', 'week', 'month']}
         step={15}
         timeslots={4}
         eventPropGetter={eventStyleGetter}
+        formats={{
+          monthHeaderFormat: 'MMMM YYYY',
+          dayHeaderFormat: 'dddd, MMMM D',
+          dayRangeHeaderFormat: ({ start, end }) => 
+            `${moment(start).format('MMM D')} - ${moment(end).format('MMM D, YYYY')}`
+        }}
+        messages={{
+          today: 'Today',
+          next: 'Next',
+          previous: 'Previous',
+          month: 'Month',
+          week: 'Week',
+          day: 'Day'
+        }}
       />
     </div>
   );
