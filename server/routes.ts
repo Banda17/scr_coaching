@@ -71,8 +71,53 @@ export function registerRoutes(app: Express) {
   app.get("/api/schedules", async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
+      
+      type JoinedSchedule = {
+        id: number;
+        trainId: number | null;
+        departureLocationId: number | null;
+        arrivalLocationId: number | null;
+        scheduledDeparture: Date;
+        scheduledArrival: Date;
+        actualDeparture: Date | null;
+        actualArrival: Date | null;
+        status: string;
+        isCancelled: boolean;
+        runningDays: boolean[];
+        effectiveStartDate: Date;
+        effectiveEndDate: Date | null;
+        train: {
+          id: number;
+          trainNumber: string;
+          type: string;
+          description: string | null;
+        } | null;
+        departureLocation: {
+          id: number;
+          name: string;
+          code: string;
+        } | null;
+        arrivalLocation: {
+          id: number;
+          name: string;
+          code: string;
+        } | null;
+      };
+
       const results = await db.select({
-        ...schedules,
+        id: schedules.id,
+        trainId: schedules.trainId,
+        departureLocationId: schedules.departureLocationId,
+        arrivalLocationId: schedules.arrivalLocationId,
+        scheduledDeparture: schedules.scheduledDeparture,
+        scheduledArrival: schedules.scheduledArrival,
+        actualDeparture: schedules.actualDeparture,
+        actualArrival: schedules.actualArrival,
+        status: schedules.status,
+        isCancelled: schedules.isCancelled,
+        runningDays: schedules.runningDays,
+        effectiveStartDate: schedules.effectiveStartDate,
+        effectiveEndDate: schedules.effectiveEndDate,
         train: {
           id: trains.id,
           trainNumber: trains.trainNumber,
@@ -85,15 +130,23 @@ export function registerRoutes(app: Express) {
           code: locations.code
         },
         arrivalLocation: {
-          id: locations.id,
-          name: locations.name,
-          code: locations.code
+          id: sql<{ id: number; name: string; code: string } | null>`
+            CASE 
+              WHEN arrival_locations.id IS NOT NULL 
+              THEN json_build_object(
+                'id', arrival_locations.id,
+                'name', arrival_locations.name,
+                'code', arrival_locations.code
+              )
+              ELSE NULL 
+            END
+          `
         }
-      })
+      } satisfies Record<keyof JoinedSchedule, any>)
       .from(schedules)
       .leftJoin(trains, eq(schedules.trainId, trains.id))
       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
-      .leftJoin(locations, eq(schedules.arrivalLocationId, locations.id))
+      .leftJoin(locations.as('arrival_locations'), eq(schedules.arrivalLocationId, sql`arrival_locations.id`))
       .where(
         startDate && endDate
           ? and(
@@ -102,6 +155,7 @@ export function registerRoutes(app: Express) {
             )
           : undefined
       );
+
       res.json(results);
     } catch (error) {
       console.error("[API] Failed to fetch schedules:", error);
