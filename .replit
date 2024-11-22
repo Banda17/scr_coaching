@@ -51,6 +51,14 @@ args = "Documentation Review"
 task = "workflow.run"
 args = "Type Check"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Installation Doc Verification"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Final Documentation Verification"
+
 [[workflows.workflow]]
 name = "Railway Operations System"
 author = "agent"
@@ -78,7 +86,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "ls -l docs/database.md"
+args = "ls -l docs/INSTALLATION.md"
 
 [[workflows.workflow]]
 name = "Documentation Review"
@@ -107,3 +115,31 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx tsc --noEmit"
+
+[[workflows.workflow]]
+name = "Installation Doc Verification"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "ls -l docs/INSTALLATION.md; cat docs/INSTALLATION.md | grep '^##' -A 1"
+
+[[workflows.workflow]]
+name = "Final Documentation Verification"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo 'Installation documentation is complete with the following sections:' && grep '^##' docs/INSTALLATION.md"
