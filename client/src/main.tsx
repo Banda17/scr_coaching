@@ -14,6 +14,7 @@ import Schedules from "./pages/Schedules";
 import Analytics from "./pages/Analytics";
 import ScheduleStatsPage from "./pages/ScheduleStatsPage";
 import TrainsPage from "./pages/TrainsPage";
+import TrainRoutesPage from "./pages/TrainRoutesPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -45,6 +46,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/trains" component={TrainsPage} />
         <Route path="/schedules" component={Schedules} />
+        <Route path="/routes" component={TrainRoutesPage} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/statistics" component={ScheduleStatsPage} />
         <Route>404 Page Not Found</Route>

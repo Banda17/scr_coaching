@@ -14,6 +14,7 @@ export default function Navbar() {
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/trains", label: "Trains", icon: Calendar },
     { href: "/schedules", label: "Schedules", icon: Calendar },
+    { href: "/routes", label: "Routes", icon: Calendar },
     { href: "/statistics", label: "Statistics", icon: BarChart },
     { href: "/analytics", label: "Analytics", icon: BarChart },
   ];
