@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { db, checkDbConnection } from "../db";
 import { trains, locations, schedules, UserRole } from "@db/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { setupAuth, requireRole } from "./auth";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -104,6 +105,7 @@ export function registerRoutes(app: Express) {
         } | null;
       };
 
+      const arrival_locations = alias(locations, 'arrival_locations');
       const results = await db.select({
         id: schedules.id,
         trainId: schedules.trainId,
@@ -130,27 +132,15 @@ export function registerRoutes(app: Express) {
           code: locations.code
         },
         arrivalLocation: {
-          id: sql<{ id: number; name: string; code: string } | null>`
-            CASE 
-              WHEN arrival_locations.id IS NOT NULL 
-              THEN json_build_object(
-                'id', arrival_locations.id,
-                'name', arrival_locations.name,
-                'code', arrival_locations.code
-              )
-              ELSE NULL 
-            END
-          `
+          id: arrival_locations.id,
+          name: arrival_locations.name,
+          code: arrival_locations.code
         }
       } satisfies Record<keyof JoinedSchedule, any>)
       .from(schedules)
       .leftJoin(trains, eq(schedules.trainId, trains.id))
       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
-      .leftJoin(
-        locations,
-        eq(schedules.arrivalLocationId, locations.id),
-        { alias: 'arrival_locations' }
-      )
+      .leftJoin(arrival_locations, eq(schedules.arrivalLocationId, arrival_locations.id))
       .where(
         startDate && endDate
           ? and(
