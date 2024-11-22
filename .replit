@@ -47,6 +47,10 @@ args = "Documentation Verification"
 task = "workflow.run"
 args = "Documentation Review"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Type Check"
+
 [[workflows.workflow]]
 name = "Railway Operations System"
 author = "agent"
@@ -89,3 +93,17 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cat docs/database.md"
+
+[[workflows.workflow]]
+name = "Type Check"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx tsc --noEmit"
