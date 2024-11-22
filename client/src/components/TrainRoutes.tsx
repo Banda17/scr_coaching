@@ -10,8 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import type { Schedule } from "@db/schema";
 
+interface Location {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface ExtendedSchedule extends Schedule {
+  departureLocation?: Location;
+  arrivalLocation?: Location;
+}
+
 interface TrainRouteProps {
-  schedules: Schedule[];
+  schedules: ExtendedSchedule[];
 }
 
 export default function TrainRoutes({ schedules }: TrainRouteProps) {
