@@ -26,6 +26,12 @@ interface TrainRouteProps {
 }
 
 export default function TrainRoutes({ schedules }: TrainRouteProps) {
+  const formatDuration = (startDate: Date, endDate: Date) => {
+    const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
   const getStatusColor = (status: string, isCancelled: boolean) => {
     if (isCancelled) return 'bg-red-500';
     switch (status) {
@@ -44,12 +50,13 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Train</TableHead>
+          <TableHead>Train Number</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>From</TableHead>
           <TableHead>To</TableHead>
           <TableHead>Departure</TableHead>
           <TableHead>Arrival</TableHead>
+          <TableHead>Duration</TableHead>
           <TableHead>Running Days</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Effective Period</TableHead>
@@ -58,19 +65,42 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
       <TableBody>
         {schedules.map((schedule) => (
           <TableRow key={schedule.id}>
-            <TableCell>{schedule.trainId}</TableCell>
+            <TableCell>{schedule.train?.trainNumber || schedule.trainId}</TableCell>
             <TableCell>
               <Badge variant="outline">
                 {schedule.train?.type?.toUpperCase() || 'Unknown'}
               </Badge>
             </TableCell>
-            <TableCell>{schedule.departureLocation?.name || schedule.departureLocationId}</TableCell>
-            <TableCell>{schedule.arrivalLocation?.name || schedule.arrivalLocationId}</TableCell>
             <TableCell>
-              {format(new Date(schedule.scheduledDeparture), 'HH:mm')}
+              <div className="flex flex-col">
+                <span>{schedule.departureLocation?.name || schedule.departureLocationId}</span>
+                <span className="text-xs text-muted-foreground">{schedule.departureLocation?.code}</span>
+              </div>
             </TableCell>
             <TableCell>
-              {format(new Date(schedule.scheduledArrival), 'HH:mm')}
+              <div className="flex flex-col">
+                <span>{schedule.arrivalLocation?.name || schedule.arrivalLocationId}</span>
+                <span className="text-xs text-muted-foreground">{schedule.arrivalLocation?.code}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col">
+                <span>{format(new Date(schedule.scheduledDeparture), 'HH:mm')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(schedule.scheduledDeparture), 'dd MMM yyyy')}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col">
+                <span>{format(new Date(schedule.scheduledArrival), 'HH:mm')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(schedule.scheduledArrival), 'dd MMM yyyy')}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>
+              {formatDuration(new Date(schedule.scheduledDeparture), new Date(schedule.scheduledArrival))}
             </TableCell>
             <TableCell>
               <div className="flex gap-1">
