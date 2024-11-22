@@ -17,6 +17,7 @@ export default function Navbar() {
     { href: "/routes", label: "Routes", icon: Calendar },
     { href: "/statistics", label: "Statistics", icon: BarChart },
     { href: "/analytics", label: "Analytics", icon: BarChart },
+    { href: "/register-user", label: "Register User", icon: User, adminOnly: true },
   ];
 
   return (
@@ -24,7 +25,9 @@ export default function Navbar() {
       <div className="container flex h-14 max-w-screen-2xl items-center">
         <div className="flex flex-1 items-center justify-between">
           <div className="flex items-center gap-6 md:gap-10">
-            {navItems.map(({ href, label, icon: Icon }) => (
+            {navItems
+              .filter(item => !item.adminOnly || user?.role === 'admin')
+              .map(({ href, label, icon: Icon }) => (
               <Link 
                 key={href} 
                 href={href}

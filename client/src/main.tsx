@@ -15,6 +15,22 @@ import Analytics from "./pages/Analytics";
 import ScheduleStatsPage from "./pages/ScheduleStatsPage";
 import TrainsPage from "./pages/TrainsPage";
 import TrainRoutesPage from "./pages/TrainRoutesPage";
+import UserRegistrationPage from "./pages/UserRegistrationPage";
+import { useLocation } from "wouter";
+
+// Admin route guard component
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user } = useUser();
+  
+  const [, setLocation] = useLocation();
+  
+  if (!user || user.role !== 'admin') {
+    setLocation("/");
+    return null;
+  }
+  
+  return <Component />;
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -49,6 +65,7 @@ function Router() {
         <Route path="/routes" component={TrainRoutesPage} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/statistics" component={ScheduleStatsPage} />
+        <Route path="/register-user" component={() => <AdminRoute component={UserRegistrationPage} />} />
         <Route>404 Page Not Found</Route>
       </Switch>
     </Layout>
