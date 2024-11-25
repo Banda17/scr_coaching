@@ -153,7 +153,7 @@ export default function LocationManagementPage() {
         toast({
           title: "Import Completed with Warnings",
           description: `${successMessage}. ${errorCount} error${errorCount !== 1 ? 's' : ''} occurred.`,
-          variant: "warning"
+          variant: "destructive"
         });
         
         // Log detailed errors for debugging

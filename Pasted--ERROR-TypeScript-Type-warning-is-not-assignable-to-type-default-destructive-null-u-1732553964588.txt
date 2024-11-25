@@ -1,0 +1,89 @@
+ ERROR(TypeScript)  Type '"warning"' is not assignable to type '"default" | "destructive" | null | undefined'.
+ FILE  /home/runner/workspace/client/src/pages/LocationManagementPage.tsx:156:11
+
+    154 |           title: "Import Completed with Warnings",
+    155 |           description: `${successMessage}. ${errorCount} error${errorCount !== 1 ? 's' : ''} occurred.`,
+  > 156 |           variant: "warning"
+        |           ^^^^^^^
+    157 |         });
+    158 |         
+    159 |         // Log detailed errors for debugging
+
+ ERROR(TypeScript)  Property 'trainNumber' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:455:56
+
+    453 |           // Find train by number
+    454 |           const train = await db.select().from(trains)
+  > 455 |             .where(eq(trains.trainNumber, validatedRow.trainNumber))
+        |                                                        ^^^^^^^^^^^
+    456 |             .limit(1);
+    457 |
+    458 |           // Find locations
+
+ ERROR(TypeScript)  Property 'departureLocation' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:460:52
+
+    458 |           // Find locations
+    459 |           const departureLocation = await db.select().from(locations)
+  > 460 |             .where(eq(locations.name, validatedRow.departureLocation))
+        |                                                    ^^^^^^^^^^^^^^^^^
+    461 |             .limit(1);
+    462 |           
+    463 |           const arrivalLocation = await db.select().from(locations)
+
+ ERROR(TypeScript)  Property 'arrivalLocation' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:464:52
+
+    462 |           
+    463 |           const arrivalLocation = await db.select().from(locations)
+  > 464 |             .where(eq(locations.name, validatedRow.arrivalLocation))
+        |                                                    ^^^^^^^^^^^^^^^
+    465 |             .limit(1);
+    466 |
+    467 |           if (!train[0] || !departureLocation[0] || !arrivalLocation[0]) {
+
+ ERROR(TypeScript)  Property 'trainNumber' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:468:90
+
+    466 |
+    467 |           if (!train[0] || !departureLocation[0] || !arrivalLocation[0]) {
+  > 468 |             throw new Error(`Invalid references for row with train number ${validatedRow.trainNumber}`);
+        |                                                                                          ^^^^^^^^^^^
+    469 |           }
+    470 |
+    471 |           // Create schedule
+
+ ERROR(TypeScript)  Property 'scheduledDeparture' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:476:55
+
+    474 |             departureLocationId: departureLocation[0].id,
+    475 |             arrivalLocationId: arrivalLocation[0].id,
+  > 476 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+        |                                                       ^^^^^^^^^^^^^^^^^^
+    477 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+    478 |             status: validatedRow.status,
+    479 |             isCancelled: false
+
+ ERROR(TypeScript)  Property 'scheduledArrival' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:477:53
+
+    475 |             arrivalLocationId: arrivalLocation[0].id,
+    476 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+  > 477 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+        |                                                     ^^^^^^^^^^^^^^^^
+    478 |             status: validatedRow.status,
+    479 |             isCancelled: false
+    480 |           });
+
+ ERROR(TypeScript)  Property 'status' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:478:34
+
+    476 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+    477 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+  > 478 |             status: validatedRow.status,
+        |                                  ^^^^^^
+    479 |             isCancelled: false
+    480 |           });
+    481 |
+
+[TypeScript] Found 8 errors. Watching for file changes.
