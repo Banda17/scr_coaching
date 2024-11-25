@@ -69,28 +69,95 @@ export function registerRoutes(app: Express) {
   });
 
   // Import locations from Excel
+  // Excel row validation schema with detailed error messages
+  const excelRowSchema = z.object({
+    name: z.string()
+      .min(1, "Location name cannot be empty")
+      .max(100, "Location name is too long (max 100 characters)")
+      .refine(val => /^[a-zA-Z0-9\s.-]+$/.test(val), {
+        message: "Location name can only contain letters, numbers, spaces, dots, and hyphens"
+      }),
+    code: z.string()
+      .min(1, "Location code cannot be empty")
+      .max(10, "Location code is too long (max 10 characters)")
+      .refine(val => /^[A-Z0-9.-]+$/.test(val.toUpperCase()), {
+        message: "Location code can only contain uppercase letters, numbers, dots, and hyphens"
+      })
+  });
+
   app.post("/api/locations/import", requireRole(UserRole.Admin), upload.single('file'), async (req, res) => {
+    // Validate file upload
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      return res.status(400).json({
+        error: "File upload error",
+        message: "No file was uploaded",
+        code: "FILE_MISSING"
+      });
+    }
+
+    // Validate file type
+    if (!req.file.originalname.match(/\.(xlsx|xls)$/i)) {
+      return res.status(400).json({
+        error: "Invalid file format",
+        message: "Only Excel files (.xlsx or .xls) are allowed",
+        code: "INVALID_FILE_FORMAT"
+      });
     }
 
     try {
-      // Read Excel file
-      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      // Attempt to read Excel file
+      let workbook;
+      try {
+        workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      } catch (error) {
+        return res.status(400).json({
+          error: "Excel parsing error",
+          message: "Failed to parse Excel file. Please ensure it's a valid Excel document",
+          code: "EXCEL_PARSE_ERROR",
+          details: error instanceof Error ? error.message : undefined
+        });
+      }
+
+      // Validate workbook structure
+      if (!workbook.SheetNames.length) {
+        return res.status(400).json({
+          error: "Invalid Excel format",
+          message: "Excel file contains no sheets",
+          code: "NO_SHEETS"
+        });
+      }
+
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(worksheet);
 
+      // Validate rows existence
+      if (!rows.length) {
+        return res.status(400).json({
+          error: "Empty file",
+          message: "Excel file contains no data rows",
+          code: "NO_DATA"
+        });
+      }
+
       let importedCount = 0;
-      const errors: string[] = [];
-      const locationSchema = z.object({
-        name: z.string().min(1, "Location name is required"),
-        code: z.string().min(1, "Location code is required").max(10, "Code too long")
-      });
+      const errors: Array<{
+        row: number;
+        message: string;
+        data?: any;
+      }> = [];
 
       // Process each row
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const rowNumber = i + 2; // Add 2 to account for header row and 1-based indexing
+        const row = rows[i];
+
         try {
-          const validatedRow = locationSchema.parse(row);
+          // Validate row structure
+          if (!row || typeof row !== 'object') {
+            throw new Error("Invalid row format");
+          }
+
+          const validatedRow = excelRowSchema.parse(row);
 
           // Check for duplicate code
           const existingLocation = await db.select()
@@ -99,29 +166,52 @@ export function registerRoutes(app: Express) {
             .limit(1);
 
           if (existingLocation.length > 0) {
-            errors.push(`Location with code ${validatedRow.code} already exists`);
+            errors.push({
+              row: rowNumber,
+              message: `Location code '${validatedRow.code}' already exists`,
+              data: { code: validatedRow.code }
+            });
             continue;
           }
 
           // Create location
           await db.insert(locations).values({
-            name: validatedRow.name,
-            code: validatedRow.code.toUpperCase()
+            name: validatedRow.name.trim(),
+            code: validatedRow.code.toUpperCase().trim()
           });
 
           importedCount++;
         } catch (error) {
-          errors.push(error instanceof Error ? error.message : 'Unknown error');
+          let errorMessage = "Unknown error";
+          if (error instanceof z.ZodError) {
+            errorMessage = error.errors.map(e => e.message).join("; ");
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+
+          errors.push({
+            row: rowNumber,
+            message: errorMessage,
+            data: row
+          });
         }
       }
 
-      res.json({
+      // Send detailed response
+      return res.json({
+        success: true,
         imported: importedCount,
-        errors: errors.length > 0 ? errors : undefined
+        total: rows.length,
+        errors: errors.length > 0 ? errors : undefined,
+        summary: `Imported ${importedCount} out of ${rows.length} locations${errors.length > 0 ? ` (${errors.length} errors)` : ''}`
       });
+
     } catch (error) {
-      res.status(400).json({
-        error: "Failed to process Excel file",
+      console.error("[Location Import] Error:", error);
+      return res.status(500).json({
+        error: "Import processing error",
+        message: "Failed to process location import",
+        code: "IMPORT_FAILED",
         details: error instanceof Error ? error.message : undefined
       });
     }

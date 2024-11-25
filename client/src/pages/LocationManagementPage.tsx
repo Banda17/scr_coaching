@@ -101,29 +101,72 @@ export default function LocationManagementPage() {
 
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
+      // Validate file type and size
+      if (!file.name.match(/\.(xlsx|xls)$/i)) {
+        throw new Error("Invalid file format. Please upload an Excel file (.xlsx or .xls)");
+      }
+
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        throw new Error("File size too large. Maximum size is 5MB");
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch("/api/locations/import", {
-        method: "POST",
-        body: formData,
-      });
+      try {
+        const response = await fetch("/api/locations/import", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to import locations");
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid server response format");
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to import locations");
+        }
+
+        if (typeof data !== 'object' || !('imported' in data)) {
+          throw new Error("Invalid response format from server");
+        }
+
+        return data;
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          throw new Error("Invalid JSON response from server");
+        }
+        throw error;
       }
-
-      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
-      toast({
-        title: "Import Successful",
-        description: `Imported ${data.imported} locations${data.errors ? `. ${data.errors.length} errors occurred.` : ''}`
-      });
+      
+      // Format detailed success message
+      let successMessage = `Successfully imported ${data.imported} location${data.imported !== 1 ? 's' : ''}`;
+      
       if (data.errors?.length) {
-        console.error("Import errors:", data.errors);
+        const errorCount = data.errors.length;
+        toast({
+          title: "Import Completed with Warnings",
+          description: `${successMessage}. ${errorCount} error${errorCount !== 1 ? 's' : ''} occurred.`,
+          variant: "warning"
+        });
+        
+        // Log detailed errors for debugging
+        console.group("Import Errors");
+        data.errors.forEach((error: string, index: number) => {
+          console.error(`Error ${index + 1}:`, error);
+        });
+        console.groupEnd();
+      } else {
+        toast({
+          title: "Import Successful",
+          description: successMessage
+        });
       }
     },
     onError: (error: Error) => {
@@ -137,8 +180,20 @@ export default function LocationManagementPage() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      importMutation.mutate(file);
+    if (!file) {
+      toast({
+        title: "Upload Error",
+        description: "No file selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    importMutation.mutate(file);
+    
+    // Reset file input
+    if (event.target) {
+      event.target.value = '';
     }
   };
 
