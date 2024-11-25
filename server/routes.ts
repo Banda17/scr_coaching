@@ -15,8 +15,8 @@ const upload = multer({
   }
 });
 
-// Schema for Excel import validation
-const excelRowSchema = z.object({
+// Schema for location import validation
+const locationImportSchema = z.object({
   name: z.string()
     .min(1, "Location name cannot be empty")
     .max(100, "Location name is too long (max 100 characters)")
@@ -29,6 +29,23 @@ const excelRowSchema = z.object({
     .refine(val => /^[A-Z0-9.-]+$/.test(val.toUpperCase()), {
       message: "Location code can only contain uppercase letters, numbers, dots, and hyphens"
     })
+});
+
+// Schema for schedule import validation
+const scheduleImportSchema = z.object({
+  trainNumber: z.string().min(1, "Train number cannot be empty"),
+  departureLocation: z.string().min(1, "Departure location cannot be empty"),
+  arrivalLocation: z.string().min(1, "Arrival location cannot be empty"),
+  scheduledDeparture: z.string()
+    .refine(val => !isNaN(Date.parse(val)), {
+      message: "Invalid scheduled departure date/time format"
+    }),
+  scheduledArrival: z.string()
+    .refine(val => !isNaN(Date.parse(val)), {
+      message: "Invalid scheduled arrival date/time format"
+    }),
+  status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled'])
+    .default('scheduled')
 });
 
 // The import statements were moved to the top of the file
@@ -163,7 +180,7 @@ export function registerRoutes(app: Express) {
             throw new Error("Invalid row format");
           }
 
-          const validatedRow = excelRowSchema.parse(row);
+          const validatedRow = locationImportSchema.parse(row);
 
           // Check for duplicate code
           const existingLocation = await db.select()
@@ -454,24 +471,40 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
       // Process each row
       for (const row of rows) {
         try {
-          const validatedRow = excelRowSchema.parse(row);
+          const validatedRow = scheduleImportSchema.parse(row);
 
           // Find train by number
           const train = await db.select().from(trains)
             .where(eq(trains.trainNumber, validatedRow.trainNumber))
             .limit(1);
 
+          if (!train[0]) {
+            throw new Error(`Train number '${validatedRow.trainNumber}' not found`);
+          }
+
           // Find locations
           const departureLocation = await db.select().from(locations)
             .where(eq(locations.name, validatedRow.departureLocation))
             .limit(1);
           
+          if (!departureLocation[0]) {
+            throw new Error(`Departure location '${validatedRow.departureLocation}' not found`);
+          }
+
           const arrivalLocation = await db.select().from(locations)
             .where(eq(locations.name, validatedRow.arrivalLocation))
             .limit(1);
 
-          if (!train[0] || !departureLocation[0] || !arrivalLocation[0]) {
-            throw new Error(`Invalid references for row with train number ${validatedRow.trainNumber}`);
+          if (!arrivalLocation[0]) {
+            throw new Error(`Arrival location '${validatedRow.arrivalLocation}' not found`);
+          }
+
+          // Validate departure and arrival times
+          const scheduledDeparture = new Date(validatedRow.scheduledDeparture);
+          const scheduledArrival = new Date(validatedRow.scheduledArrival);
+
+          if (scheduledArrival <= scheduledDeparture) {
+            throw new Error('Scheduled arrival must be after scheduled departure');
           }
 
           // Create schedule
@@ -479,10 +512,12 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
             trainId: train[0].id,
             departureLocationId: departureLocation[0].id,
             arrivalLocationId: arrivalLocation[0].id,
-            scheduledDeparture: new Date(validatedRow.scheduledDeparture),
-            scheduledArrival: new Date(validatedRow.scheduledArrival),
+            scheduledDeparture,
+            scheduledArrival,
             status: validatedRow.status,
-            isCancelled: false
+            isCancelled: false,
+            runningDays: Array(7).fill(true), // Default to running all days
+            effectiveStartDate: new Date() // Default to current date
           });
 
           importedCount++;

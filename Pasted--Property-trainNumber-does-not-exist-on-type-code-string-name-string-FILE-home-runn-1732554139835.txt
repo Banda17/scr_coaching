@@ -1,0 +1,78 @@
+ Property 'trainNumber' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:461:56
+
+    459 |           // Find train by number
+    460 |           const train = await db.select().from(trains)
+  > 461 |             .where(eq(trains.trainNumber, validatedRow.trainNumber))
+        |                                                        ^^^^^^^^^^^
+    462 |             .limit(1);
+    463 |
+    464 |           // Find locations
+
+ ERROR(TypeScript)  Property 'departureLocation' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:466:52
+
+    464 |           // Find locations
+    465 |           const departureLocation = await db.select().from(locations)
+  > 466 |             .where(eq(locations.name, validatedRow.departureLocation))
+        |                                                    ^^^^^^^^^^^^^^^^^
+    467 |             .limit(1);
+    468 |           
+    469 |           const arrivalLocation = await db.select().from(locations)
+
+ ERROR(TypeScript)  Property 'arrivalLocation' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:470:52
+
+    468 |           
+    469 |           const arrivalLocation = await db.select().from(locations)
+  > 470 |             .where(eq(locations.name, validatedRow.arrivalLocation))
+        |                                                    ^^^^^^^^^^^^^^^
+    471 |             .limit(1);
+    472 |
+    473 |           if (!train[0] || !departureLocation[0] || !arrivalLocation[0]) {
+
+ ERROR(TypeScript)  Property 'trainNumber' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:474:90
+
+    472 |
+    473 |           if (!train[0] || !departureLocation[0] || !arrivalLocation[0]) {
+  > 474 |             throw new Error(`Invalid references for row with train number ${validatedRow.trainNumber}`);
+        |                                                                                          ^^^^^^^^^^^
+    475 |           }
+    476 |
+    477 |           // Create schedule
+
+ ERROR(TypeScript)  Property 'scheduledDeparture' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:482:55
+
+    480 |             departureLocationId: departureLocation[0].id,
+    481 |             arrivalLocationId: arrivalLocation[0].id,
+  > 482 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+        |                                                       ^^^^^^^^^^^^^^^^^^
+    483 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+    484 |             status: validatedRow.status,
+    485 |             isCancelled: false
+
+ ERROR(TypeScript)  Property 'scheduledArrival' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:483:53
+
+    481 |             arrivalLocationId: arrivalLocation[0].id,
+    482 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+  > 483 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+        |                                                     ^^^^^^^^^^^^^^^^
+    484 |             status: validatedRow.status,
+    485 |             isCancelled: false
+    486 |           });
+
+ ERROR(TypeScript)  Property 'status' does not exist on type '{ code: string; name: string; }'.
+ FILE  /home/runner/workspace/server/routes.ts:484:34
+
+    482 |             scheduledDeparture: new Date(validatedRow.scheduledDeparture),
+    483 |             scheduledArrival: new Date(validatedRow.scheduledArrival),
+  > 484 |             status: validatedRow.status,
+        |                                  ^^^^^^
+    485 |             isCancelled: false
+    486 |           });
+    487 |
+
+[TypeScript] Found 7 errors. Watching for file changes.
