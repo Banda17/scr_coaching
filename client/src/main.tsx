@@ -16,6 +16,7 @@ import ScheduleStatsPage from "./pages/ScheduleStatsPage";
 import TrainsPage from "./pages/TrainsPage";
 import TrainRoutesPage from "./pages/TrainRoutesPage";
 import UserRegistrationPage from "./pages/UserRegistrationPage";
+import LocationManagementPage from "./pages/LocationManagementPage";
 import { useLocation } from "wouter";
 
 // Admin route guard component
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/statistics" component={ScheduleStatsPage} />
         <Route path="/register-user" component={() => <AdminRoute component={UserRegistrationPage} />} />
+        <Route path="/locations" component={() => <AdminRoute component={LocationManagementPage} />} />
         <Route>404 Page Not Found</Route>
       </Switch>
     </Layout>

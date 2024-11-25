@@ -68,6 +68,65 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Import locations from Excel
+  app.post("/api/locations/import", requireRole(UserRole.Admin), upload.single('file'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    try {
+      // Read Excel file
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(worksheet);
+
+      let importedCount = 0;
+      const errors: string[] = [];
+      const locationSchema = z.object({
+        name: z.string().min(1, "Location name is required"),
+        code: z.string().min(1, "Location code is required").max(10, "Code too long")
+      });
+
+      // Process each row
+      for (const row of rows) {
+        try {
+          const validatedRow = locationSchema.parse(row);
+
+          // Check for duplicate code
+          const existingLocation = await db.select()
+            .from(locations)
+            .where(eq(locations.code, validatedRow.code.toUpperCase()))
+            .limit(1);
+
+          if (existingLocation.length > 0) {
+            errors.push(`Location with code ${validatedRow.code} already exists`);
+            continue;
+          }
+
+          // Create location
+          await db.insert(locations).values({
+            name: validatedRow.name,
+            code: validatedRow.code.toUpperCase()
+          });
+
+          importedCount++;
+        } catch (error) {
+          errors.push(error instanceof Error ? error.message : 'Unknown error');
+        }
+      }
+
+      res.json({
+        imported: importedCount,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: "Failed to process Excel file",
+        details: error instanceof Error ? error.message : undefined
+      });
+    }
+  });
+
   // Schedules
   app.get("/api/schedules", async (req, res) => {
     try {

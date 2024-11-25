@@ -18,6 +18,7 @@ export default function Navbar() {
     { href: "/statistics", label: "Statistics", icon: BarChart },
     { href: "/analytics", label: "Analytics", icon: BarChart },
     { href: "/register-user", label: "Register User", icon: User, adminOnly: true },
+    { href: "/locations", label: "Locations", icon: User, adminOnly: true },
   ];
 
   return (
