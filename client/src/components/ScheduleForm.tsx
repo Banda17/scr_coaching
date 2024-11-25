@@ -22,6 +22,7 @@ interface ExtraLocation {
   locationId: number;
   arrivalTime: string;
   departureTime: string;
+  remarks: string;
 }
 
 interface ImportantStation {
@@ -141,7 +142,8 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 const newLocation: ExtraLocation = {
                   locationId: 0,
                   arrivalTime: '',
-                  departureTime: ''
+                  departureTime: '',
+                  remarks: ''
                 };
                 setExtraLocations([...extraLocations, newLocation]);
                 const currentLocations = form.getValues('extraLocations') || [];
@@ -193,34 +195,49 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
                 placeholder="Arrival Time"
               />
               
-              <div className="flex gap-2">
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    type="time"
+                    value={location.departureTime}
+                    onChange={(e) => {
+                      const newLocations = [...extraLocations];
+                      newLocations[index] = {
+                        ...newLocations[index],
+                        departureTime: e.target.value
+                      };
+                      setExtraLocations(newLocations);
+                      form.setValue('extraLocations', newLocations);
+                    }}
+                    placeholder="Departure Time"
+                  />
+                  
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      const newLocations = [...extraLocations];
+                      newLocations.splice(index, 1);
+                      setExtraLocations(newLocations);
+                      form.setValue('extraLocations', newLocations);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
                 <Input
-                  type="time"
-                  value={location.departureTime}
+                  value={location.remarks}
                   onChange={(e) => {
                     const newLocations = [...extraLocations];
                     newLocations[index] = {
                       ...newLocations[index],
-                      departureTime: e.target.value
+                      remarks: e.target.value
                     };
                     setExtraLocations(newLocations);
                     form.setValue('extraLocations', newLocations);
                   }}
-                  placeholder="Departure Time"
+                  placeholder="Add remarks for this location"
                 />
-                
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => {
-                    const newLocations = [...extraLocations];
-                    newLocations.splice(index, 1);
-                    setExtraLocations(newLocations);
-                    form.setValue('extraLocations', newLocations);
-                  }}
-                >
-                  Remove
-                </Button>
               </div>
             </div>
           ))}
