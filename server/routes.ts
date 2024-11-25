@@ -17,12 +17,18 @@ const upload = multer({
 
 // Schema for Excel import validation
 const excelRowSchema = z.object({
-  trainNumber: z.string(),
-  departureLocation: z.string(),
-  arrivalLocation: z.string(),
-  scheduledDeparture: z.string(),
-  scheduledArrival: z.string(),
-  status: z.string().default('scheduled')
+  name: z.string()
+    .min(1, "Location name cannot be empty")
+    .max(100, "Location name is too long (max 100 characters)")
+    .refine(val => /^[a-zA-Z0-9\s.-]+$/.test(val), {
+      message: "Location name can only contain letters, numbers, spaces, dots, and hyphens"
+    }),
+  code: z.string()
+    .min(1, "Location code cannot be empty")
+    .max(10, "Location code is too long (max 10 characters)")
+    .refine(val => /^[A-Z0-9.-]+$/.test(val.toUpperCase()), {
+      message: "Location code can only contain uppercase letters, numbers, dots, and hyphens"
+    })
 });
 
 // The import statements were moved to the top of the file
