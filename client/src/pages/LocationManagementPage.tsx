@@ -92,7 +92,12 @@ export default function LocationManagementPage() {
 
   const importMutation = useMutation<ImportResponse, Error, File>({
     mutationFn: async (file: File) => {
-      if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      // Validate file type
+      const validTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      if (!file.name.match(/\.(xlsx|xls)$/i) || !validTypes.includes(file.type)) {
         throw new Error("Invalid file format. Please upload an Excel file (.xlsx or .xls)");
       }
 
@@ -103,17 +108,31 @@ export default function LocationManagementPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch("/api/locations/import", {
-        method: "POST",
-        body: formData,
-      });
+      try {
+        const response = await fetch("/api/locations/import", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to import locations");
+        // Check for non-JSON response
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server returned an invalid response format");
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to import locations");
+        }
+
+        return data;
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          throw new Error("Failed to parse server response");
+        }
+        throw error;
       }
-
-      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
@@ -175,8 +194,18 @@ export default function LocationManagementPage() {
     return <div>Loading...</div>;
   }
 
+  const isImporting = importMutation.isPending;
+
   return (
     <div className="container mx-auto p-4">
+      {isImporting && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card p-6 rounded-lg shadow-lg">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-center">Importing locations...</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Location Management</h1>
         <div className="flex gap-2">
