@@ -15,6 +15,7 @@ import type { Location } from "@db/schema";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -79,6 +80,38 @@ export default function LocationManagementPage() {
       toast({
         title: "Success",
         description: "Location created successfully"
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (locationId: number) => {
+      const response = await fetch(`/api/locations/${locationId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 400 && error.message?.includes("used in existing schedules")) {
+          throw new Error("Cannot delete location as it is being used in existing schedules. Please remove or update the associated schedules first.");
+        }
+        throw new Error(error.message || "Failed to delete location");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      toast({
+        title: "Success",
+        description: "Location deleted successfully"
       });
     },
     onError: (error: Error) => {
@@ -264,6 +297,7 @@ export default function LocationManagementPage() {
             <TableHead>ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Code</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -272,6 +306,51 @@ export default function LocationManagementPage() {
               <TableCell>{location.id}</TableCell>
               <TableCell>{location.name}</TableCell>
               <TableCell>{location.code}</TableCell>
+              <TableCell>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Deleting...
+                        </div>
+                      ) : (
+                        "Delete"
+                      )}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Location</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p>Are you sure you want to delete the location "{location.name}" ({location.code})?</p>
+                      <p className="text-sm text-muted-foreground">
+                        This action cannot be undone. This will permanently delete the location
+                        and remove it from our servers.
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <DialogTrigger asChild>
+                          <Button variant="outline">Cancel</Button>
+                        </DialogTrigger>
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            deleteMutation.mutate(location.id);
+                          }}
+                        >
+                          Delete Location
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

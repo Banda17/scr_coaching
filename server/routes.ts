@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { db, checkDbConnection } from "../db";
 import { trains, locations, schedules, UserRole } from "@db/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { setupAuth, requireRole } from "./auth";
 import multer from "multer";
@@ -91,6 +92,48 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Delete location
+  app.delete("/api/locations/:id", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const locationId = parseInt(req.params.id);
+      
+      // Check if location exists and is not referenced by any schedules
+      const [location] = await db.select().from(locations)
+        .where(eq(locations.id, locationId))
+        .limit(1);
+      
+      if (!location) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      // Check if location is referenced in schedules
+      const schedulesWithLocation = await db.select()
+        .from(schedules)
+        .where(
+          or(
+            eq(schedules.departureLocationId, locationId),
+            eq(schedules.arrivalLocationId, locationId)
+          )
+        )
+        .limit(1);
+      
+      if (schedulesWithLocation.length > 0) {
+        return res.status(400).json({ 
+          error: "Cannot delete location",
+          message: "Location is being used in existing schedules"
+        });
+      }
+      
+      // Delete the location
+      await db.delete(locations)
+        .where(eq(locations.id, locationId));
+      
+      res.json({ message: "Location deleted successfully" });
+    } catch (error) {
+      console.error("[API] Failed to delete location:", error);
+      res.status(500).json({ error: "Failed to delete location" });
+    }
+  });
   // Import locations from Excel
   // Excel row validation schema with detailed error messages
   const excelRowSchema = z.object({
