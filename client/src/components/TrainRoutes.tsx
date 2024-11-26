@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { Download } from "lucide-react";
 import * as XLSX from "xlsx";
-import type { Schedule } from "@db/schema";
+import type { Schedule, TrainType } from "@db/schema";
 import { useState, useMemo } from "react";
 
 interface Location {
@@ -31,7 +31,7 @@ interface TrainRouteProps {
 }
 
 interface ScheduleExportData {
-  'Train Number': string | number;
+  'Train Number': string;
   'Train Type': string;
   'From': string;
   'From Code': string;
@@ -72,21 +72,23 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
   const filteredSchedules = useMemo(() => {
     return selectedType === "all" 
       ? schedules 
-      : schedules.filter(schedule => schedule.train?.type === selectedType);
+      : schedules.filter(schedule => schedule.train?.type?.toLowerCase() === selectedType);
   }, [schedules, selectedType]);
 
   const trainTypes = useMemo(() => {
-    const types = new Set(
-      schedules
-        .map(schedule => schedule.train?.type)
-        .filter((type): type is string => type !== undefined && type !== null)
-    );
+    const types = new Set<string>();
+    schedules.forEach(schedule => {
+      const type = schedule.train?.type?.toLowerCase();
+      if (type) {
+        types.add(type);
+      }
+    });
     return Array.from(types);
   }, [schedules]);
 
   const handleDownload = () => {
     const data: ScheduleExportData[] = filteredSchedules.map(schedule => ({
-      'Train Number': schedule.train?.trainNumber ?? schedule.trainId ?? 'N/A',
+      'Train Number': schedule.train?.trainNumber ?? schedule.trainId?.toString() ?? 'N/A',
       'Train Type': schedule.train?.type?.toUpperCase() ?? 'Unknown',
       'From': schedule.departureLocation?.name ?? 'N/A',
       'From Code': schedule.departureLocation?.code ?? 'N/A',
