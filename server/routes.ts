@@ -9,12 +9,60 @@ import { UserRole } from "@db/schema";
 import { crypto } from "./auth";
 import * as z from "zod";
 
-
 const upload = multer();
 
 export function registerRoutes(app: Express) {
   // Setup authentication routes
   setupAuth(app);
+
+  // Selective table cleaning endpoint
+  app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const tableSchema = z.object({
+        tables: z.array(z.enum(['schedules', 'trains', 'locations'])),
+        preserveAdmin: z.boolean().default(true)
+      });
+      
+      const { tables, preserveAdmin } = tableSchema.parse(req.body);
+      
+      // Start a transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        for (const table of tables) {
+          switch (table) {
+            case 'schedules':
+              await tx.delete(schedules);
+              break;
+            case 'trains':
+              await tx.delete(trains);
+              break;
+            case 'locations':
+              await tx.delete(locations);
+              break;
+          }
+        }
+
+        // If preserveAdmin is true, we need to keep admin users
+        if (preserveAdmin && tables.includes('users')) {
+          await tx
+            .delete(users)
+            .where(sql`role != ${UserRole.Admin}`);
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Successfully cleaned tables: ${tables.join(', ')}`,
+        preservedAdmin: preserveAdmin
+      });
+    } catch (error) {
+      console.error("[API] Failed to clean tables:", error);
+      res.status(500).json({ 
+        error: "Failed to clean tables",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {
@@ -26,6 +74,65 @@ export function registerRoutes(app: Express) {
       }
     } catch (error) {
       res.status(500).json({ status: "error", message: "Failed to check database health" });
+    }
+  });
+
+  // Schedules endpoint with proper table aliasing
+  app.get("/api/schedules", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const results = await db.select({
+        id: schedules.id,
+        trainId: schedules.trainId,
+        departureLocationId: schedules.departureLocationId,
+        arrivalLocationId: schedules.arrivalLocationId,
+        scheduledDeparture: schedules.scheduledDeparture,
+        scheduledArrival: schedules.scheduledArrival,
+        actualDeparture: schedules.actualDeparture,
+        actualArrival: schedules.actualArrival,
+        status: schedules.status,
+        isCancelled: schedules.isCancelled,
+        runningDays: schedules.runningDays,
+        effectiveStartDate: schedules.effectiveStartDate,
+        effectiveEndDate: schedules.effectiveEndDate,
+        train: {
+          id: trains.id,
+          trainNumber: trains.trainNumber,
+          type: trains.type,
+          description: trains.description
+        },
+        departureLocation: {
+          id: locations.id,
+          name: locations.name,
+          code: locations.code
+        },
+        arrivalLocation: {
+          id: sql<number>`arrival_locations.id`.as('arrival_location_id'),
+          name: sql<string>`arrival_locations.name`.as('arrival_location_name'),
+          code: sql<string>`arrival_locations.code`.as('arrival_location_code')
+        }
+      })
+      .from(schedules)
+      .leftJoin(trains, eq(schedules.trainId, trains.id))
+      .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
+      .leftJoin(
+        locations.as('arrival_locations'),
+        eq(schedules.arrivalLocationId, sql`arrival_locations.id`)
+      )
+      .where(
+        startDate && endDate
+          ? and(
+              gte(schedules.scheduledDeparture, new Date(startDate as string)),
+              lte(schedules.scheduledDeparture, new Date(endDate as string))
+            )
+          : undefined
+      );
+
+      res.json(results);
+    } catch (error) {
+      console.error("[API] Failed to fetch schedules:", error);
+      res.status(500).json({ error: "Failed to fetch schedules" });
     }
   });
 
@@ -247,39 +354,6 @@ export function registerRoutes(app: Express) {
     try {
       const { startDate, endDate } = req.query;
       
-      type JoinedSchedule = {
-        id: number;
-        trainId: number | null;
-        departureLocationId: number | null;
-        arrivalLocationId: number | null;
-        scheduledDeparture: Date;
-        scheduledArrival: Date;
-        actualDeparture: Date | null;
-        actualArrival: Date | null;
-        status: string;
-        isCancelled: boolean;
-        runningDays: boolean[];
-        effectiveStartDate: Date;
-        effectiveEndDate: Date | null;
-        train: {
-          id: number;
-          trainNumber: string;
-          type: string;
-          description: string | null;
-        } | null;
-        departureLocation: {
-          id: number;
-          name: string;
-          code: string;
-        } | null;
-        arrivalLocation: {
-          id: number;
-          name: string;
-          code: string;
-        } | null;
-      };
-
-      const arrival_locations = alias(locations, 'arrival_locations');
       const results = await db.select({
         id: schedules.id,
         trainId: schedules.trainId,
@@ -306,15 +380,18 @@ export function registerRoutes(app: Express) {
           code: locations.code
         },
         arrivalLocation: {
-          id: arrival_locations.id,
-          name: arrival_locations.name,
-          code: arrival_locations.code
+          id: sql<number>`arrival_locations.id`.as('arrival_location_id'),
+          name: sql<string>`arrival_locations.name`.as('arrival_location_name'),
+          code: sql<string>`arrival_locations.code`.as('arrival_location_code')
         }
-      } satisfies Record<keyof JoinedSchedule, any>)
+      })
       .from(schedules)
       .leftJoin(trains, eq(schedules.trainId, trains.id))
       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
-      .leftJoin(arrival_locations, eq(schedules.arrivalLocationId, arrival_locations.id))
+      .leftJoin(
+        locations.as('arrival_locations'),
+        eq(schedules.arrivalLocationId, sql`arrival_locations.id`)
+      )
       .where(
         startDate && endDate
           ? and(
@@ -483,61 +560,6 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
         try {
           const validatedRow = scheduleImportSchema.parse(row);
 
-  // Selective table cleaning endpoint
-  app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
-    try {
-      const { tables } = req.body;
-
-      if (!Array.isArray(tables) || tables.length === 0) {
-        return res.status(400).json({ 
-          error: "Invalid input", 
-          message: "Please provide an array of table names to clean" 
-        });
-      }
-
-      // Validate table names
-      const validTables = ['schedules', 'trains', 'locations'];
-      const invalidTables = tables.filter(table => !validTables.includes(table));
-      
-      if (invalidTables.length > 0) {
-        return res.status(400).json({ 
-          error: "Invalid tables", 
-          message: `Invalid table names: ${invalidTables.join(', ')}`,
-          validTables 
-        });
-      }
-
-      // Begin transaction
-      await db.transaction(async (tx) => {
-        // Clean selected tables
-        for (const table of tables) {
-          switch (table) {
-            case 'schedules':
-              await tx.delete(schedules);
-              break;
-            case 'trains':
-              await tx.delete(trains);
-              break;
-            case 'locations':
-              await tx.delete(locations);
-              break;
-          }
-        }
-      });
-
-      res.json({ 
-        success: true, 
-        message: `Successfully cleaned tables: ${tables.join(', ')}`
-      });
-
-    } catch (error) {
-      console.error("[API] Table cleaning error:", error);
-      res.status(500).json({ 
-        error: "Failed to clean tables",
-        message: error instanceof Error ? error.message : "Unknown error occurred"
-      });
-    }
-  });
           // Find train by number
           const train = await db.select().from(trains)
             .where(eq(trains.trainNumber, validatedRow.trainNumber))
@@ -684,61 +706,9 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
     }
   });
 
-  // Selective table cleaning endpoint
-  app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
-    try {
-      const { tables } = req.body;
+  // This endpoint is already defined above and should not be duplicated.
+  // app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => { ... });
 
-      if (!Array.isArray(tables) || tables.length === 0) {
-        return res.status(400).json({ 
-          error: "Invalid input", 
-          message: "Please provide an array of table names to clean" 
-        });
-      }
-
-      // Validate table names
-      const validTables = ['schedules', 'trains', 'locations'];
-      const invalidTables = tables.filter(table => !validTables.includes(table));
-      
-      if (invalidTables.length > 0) {
-        return res.status(400).json({ 
-          error: "Invalid tables", 
-          message: `Invalid table names: ${invalidTables.join(', ')}`,
-          validTables 
-        });
-      }
-
-      // Begin transaction
-      await db.transaction(async (tx) => {
-        // Clean selected tables
-        for (const table of tables) {
-          switch (table) {
-            case 'schedules':
-              await tx.delete(schedules);
-              break;
-            case 'trains':
-              await tx.delete(trains);
-              break;
-            case 'locations':
-              await tx.delete(locations);
-              break;
-          }
-        }
-      });
-
-      res.json({ 
-        success: true, 
-        message: `Successfully cleaned tables: ${tables.join(', ')}`
-      });
-
-    } catch (error) {
-      console.error("[API] Table cleaning error:", error);
-      res.status(500).json({ 
-        error: "Failed to clean tables",
-        message: error instanceof Error ? error.message : "Unknown error occurred"
-      });
-    }
-  });
 }
 
 async function checkDbConnection() {
