@@ -1,0 +1,34 @@
+Argument of type '"users"' is not assignable to parameter of type '"schedules" | "trains" | "locations"'.
+ FILE  /home/runner/workspace/server/routes.ts:45:46
+
+    43 |
+    44 |         // If preserveAdmin is true, we need to keep admin users
+  > 45 |         if (preserveAdmin && tables.includes('users')) {
+       |                                              ^^^^^^^
+    46 |           await tx
+    47 |             .delete(users)
+    48 |             .where(sql`role != ${UserRole.Admin}`);
+
+ ERROR(TypeScript)  Property 'as' does not exist on type 'PgTableWithColumns<{ name: "locations"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "locations"; dataType: "number"; columnType: "PgInteger"; data: number; driverParam: string | number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; code: PgColumn<...>; ...'.
+ FILE  /home/runner/workspace/server/routes.ts:106:19
+
+    104 |       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
+    105 |       .leftJoin(
+  > 106 |         locations.as('arrival_locations'),
+        |                   ^^
+    107 |         eq(schedules.arrivalLocationId, sql`arrival_locations.id`)
+    108 |       )
+    109 |       .where(
+
+ ERROR(TypeScript)  Property 'as' does not exist on type 'PgTableWithColumns<{ name: "locations"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "locations"; dataType: "number"; columnType: "PgInteger"; data: number; driverParam: string | number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; code: PgColumn<...>; ...'.
+ FILE  /home/runner/workspace/server/routes.ts:389:19
+
+    387 |       .leftJoin(locations, eq(schedules.departureLocationId, locations.id))
+    388 |       .leftJoin(
+  > 389 |         locations.as('arrival_locations'),
+        |                   ^^
+    390 |         eq(schedules.arrivalLocationId, sql`arrival_locations.id`)
+    391 |       )
+    392 |       .where(
+
+[TypeScript] Found 3 errors. Watching for file changes.
