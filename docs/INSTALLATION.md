@@ -1,6 +1,12 @@
 # Installation Guide
 
-## Prerequisites
+## Platform-Specific Installation Guides
+
+For detailed installation instructions specific to your operating system, please refer to:
+- [Windows Installation Guide](./WINDOWS_INSTALLATION.md)
+- [Linux Installation Guide](./LINUX_INSTALLATION.md)
+
+## General Prerequisites
 
 ### System Requirements
 - Node.js 20.x
