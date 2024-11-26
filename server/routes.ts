@@ -1,57 +1,16 @@
 import type { Express } from "express";
-import { db, checkDbConnection } from "../db";
-import { trains, locations, schedules, UserRole } from "@db/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { or } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { setupAuth, requireRole } from "./auth";
 import multer from "multer";
 import * as XLSX from "xlsx";
-import { z } from "zod";
+import { db } from "../db";
+import { schedules, trains, locations, users } from "@db/schema";
+import { eq, sql, and, gte, lte, or } from "drizzle-orm";
+import { requireRole, setupAuth } from "./auth";
+import { UserRole } from "@db/schema";
+import { crypto } from "./auth";
+import * as z from "zod";
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  }
-});
 
-// Schema for location import validation
-const locationImportSchema = z.object({
-  name: z.string()
-    .min(1, "Location name cannot be empty")
-    .max(100, "Location name is too long (max 100 characters)")
-    .refine(val => /^[a-zA-Z0-9\s.-]+$/.test(val), {
-      message: "Location name can only contain letters, numbers, spaces, dots, and hyphens"
-    }),
-  code: z.string()
-    .min(1, "Location code cannot be empty")
-    .max(10, "Location code is too long (max 10 characters)")
-    .refine(val => /^[A-Z0-9.-]+$/.test(val.toUpperCase()), {
-      message: "Location code can only contain uppercase letters, numbers, dots, and hyphens"
-    })
-});
-
-// Schema for schedule import validation
-const scheduleImportSchema = z.object({
-  trainNumber: z.string().min(1, "Train number cannot be empty"),
-  departureLocation: z.string().min(1, "Departure location cannot be empty"),
-  arrivalLocation: z.string().min(1, "Arrival location cannot be empty"),
-  scheduledDeparture: z.string()
-    .refine(val => !isNaN(Date.parse(val)), {
-      message: "Invalid scheduled departure date/time format"
-    }),
-  scheduledArrival: z.string()
-    .refine(val => !isNaN(Date.parse(val)), {
-      message: "Invalid scheduled arrival date/time format"
-    }),
-  status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled'])
-    .default('scheduled')
-});
-
-// The import statements were moved to the top of the file
-// The registerRoutes function is now properly defined and exported
-// The analytics endpoints are reorganized within the function
+const upload = multer();
 
 export function registerRoutes(app: Express) {
   // Setup authentication routes
@@ -136,7 +95,7 @@ export function registerRoutes(app: Express) {
   });
   // Import locations from Excel
   // Excel row validation schema with detailed error messages
-  const excelRowSchema = z.object({
+  const locationImportSchema = z.object({
     name: z.string()
       .min(1, "Location name cannot be empty")
       .max(100, "Location name is too long (max 100 characters)")
@@ -497,6 +456,14 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
   });
 
   // Import schedules from Excel
+  const scheduleImportSchema = z.object({
+    trainNumber: z.string().min(1, "Train number cannot be empty"),
+    departureLocation: z.string().min(1, "Departure location cannot be empty"),
+    arrivalLocation: z.string().min(1, "Arrival location cannot be empty"),
+    scheduledDeparture: z.string().refine(val => !isNaN(new Date(val).getTime()), {message: "Invalid scheduled departure date"}),
+    scheduledArrival: z.string().refine(val => !isNaN(new Date(val).getTime()), {message: "Invalid scheduled arrival date"}),
+    status: z.string().optional()
+  });
   app.post("/api/schedules/import", requireRole(UserRole.Admin), upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -516,6 +483,61 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
         try {
           const validatedRow = scheduleImportSchema.parse(row);
 
+  // Selective table cleaning endpoint
+  app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const { tables } = req.body;
+
+      if (!Array.isArray(tables) || tables.length === 0) {
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          message: "Please provide an array of table names to clean" 
+        });
+      }
+
+      // Validate table names
+      const validTables = ['schedules', 'trains', 'locations'];
+      const invalidTables = tables.filter(table => !validTables.includes(table));
+      
+      if (invalidTables.length > 0) {
+        return res.status(400).json({ 
+          error: "Invalid tables", 
+          message: `Invalid table names: ${invalidTables.join(', ')}`,
+          validTables 
+        });
+      }
+
+      // Begin transaction
+      await db.transaction(async (tx) => {
+        // Clean selected tables
+        for (const table of tables) {
+          switch (table) {
+            case 'schedules':
+              await tx.delete(schedules);
+              break;
+            case 'trains':
+              await tx.delete(trains);
+              break;
+            case 'locations':
+              await tx.delete(locations);
+              break;
+          }
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Successfully cleaned tables: ${tables.join(', ')}`
+      });
+
+    } catch (error) {
+      console.error("[API] Table cleaning error:", error);
+      res.status(500).json({ 
+        error: "Failed to clean tables",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
           // Find train by number
           const train = await db.select().from(trains)
             .where(eq(trains.trainNumber, validatedRow.trainNumber))
@@ -661,4 +683,69 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
       res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
+
+  // Selective table cleaning endpoint
+  app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const { tables } = req.body;
+
+      if (!Array.isArray(tables) || tables.length === 0) {
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          message: "Please provide an array of table names to clean" 
+        });
+      }
+
+      // Validate table names
+      const validTables = ['schedules', 'trains', 'locations'];
+      const invalidTables = tables.filter(table => !validTables.includes(table));
+      
+      if (invalidTables.length > 0) {
+        return res.status(400).json({ 
+          error: "Invalid tables", 
+          message: `Invalid table names: ${invalidTables.join(', ')}`,
+          validTables 
+        });
+      }
+
+      // Begin transaction
+      await db.transaction(async (tx) => {
+        // Clean selected tables
+        for (const table of tables) {
+          switch (table) {
+            case 'schedules':
+              await tx.delete(schedules);
+              break;
+            case 'trains':
+              await tx.delete(trains);
+              break;
+            case 'locations':
+              await tx.delete(locations);
+              break;
+          }
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Successfully cleaned tables: ${tables.join(', ')}`
+      });
+
+    } catch (error) {
+      console.error("[API] Table cleaning error:", error);
+      res.status(500).json({ 
+        error: "Failed to clean tables",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+}
+
+async function checkDbConnection() {
+  try {
+    await db.execute(sql`SELECT 1`);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
