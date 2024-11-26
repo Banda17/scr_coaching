@@ -30,7 +30,7 @@ interface TrainRouteProps {
   schedules: ExtendedSchedule[];
 }
 
-interface ScheduleExportData {
+type ScheduleExportData = {
   'Train Number': string;
   'Train Type': string;
   'From': string;
@@ -72,13 +72,15 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
   const filteredSchedules = useMemo(() => {
     return selectedType === "all" 
       ? schedules 
-      : schedules.filter(schedule => schedule.train?.type?.toLowerCase() === selectedType);
+      : schedules.filter(schedule => 
+          schedule.train?.type?.toLowerCase() === selectedType.toLowerCase()
+        );
   }, [schedules, selectedType]);
 
   const trainTypes = useMemo(() => {
-    const types = new Set<string>();
+    const types = new Set<TrainType>();
     schedules.forEach(schedule => {
-      const type = schedule.train?.type?.toLowerCase();
+      const type = schedule.train?.type;
       if (type) {
         types.add(type);
       }
@@ -111,11 +113,11 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Train Schedules');
     
-    // Auto-size columns with type-safe access
-    const colWidths = Object.keys(data[0] || {}).map(key => ({
+    // Auto-size columns
+    const colWidths = Object.entries(data[0] || {}).map(([key, _]) => ({
       wch: Math.max(
         key.length,
-        ...data.map(row => String(row[key as keyof ScheduleExportData] ?? '').length)
+        ...data.map(row => String(row[key as keyof ScheduleExportData] || '').length)
       )
     }));
     ws['!cols'] = colWidths;
@@ -134,7 +136,7 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               {trainTypes.map((type) => (
-                <SelectItem key={type} value={type}>
+                <SelectItem key={type} value={type.toLowerCase()}>
                   {type.toUpperCase()}
                 </SelectItem>
               ))}
