@@ -30,17 +30,32 @@ interface TrainRouteProps {
   schedules: ExtendedSchedule[];
 }
 
+interface ScheduleExportData {
+  'Train Number': string | number;
+  'Train Type': string;
+  'From': string;
+  'From Code': string;
+  'To': string;
+  'To Code': string;
+  'Departure': string;
+  'Arrival': string;
+  'Duration': string;
+  'Status': string;
+  'Running Days': string;
+  'Effective Period': string;
+}
+
 export default function TrainRoutes({ schedules }: TrainRouteProps) {
   const [selectedType, setSelectedType] = useState<string>("all");
   
-  const formatDuration = (startDate: Date, endDate: Date) => {
+  const formatDuration = (startDate: Date, endDate: Date): string => {
     const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
   };
 
-  const getStatusColor = (status: string, isCancelled: boolean) => {
+  const getStatusColor = (status: string, isCancelled: boolean): string => {
     if (isCancelled) return 'bg-red-500';
     switch (status) {
       case 'running':
@@ -61,18 +76,22 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
   }, [schedules, selectedType]);
 
   const trainTypes = useMemo(() => {
-    const types = new Set(schedules.map(schedule => schedule.train?.type).filter(Boolean));
+    const types = new Set(
+      schedules
+        .map(schedule => schedule.train?.type)
+        .filter((type): type is string => type !== undefined && type !== null)
+    );
     return Array.from(types);
   }, [schedules]);
 
   const handleDownload = () => {
-    const data = filteredSchedules.map(schedule => ({
-      'Train Number': schedule.train?.trainNumber || schedule.trainId,
-      'Train Type': schedule.train?.type?.toUpperCase() || 'Unknown',
-      'From': schedule.departureLocation?.name,
-      'From Code': schedule.departureLocation?.code,
-      'To': schedule.arrivalLocation?.name,
-      'To Code': schedule.arrivalLocation?.code,
+    const data: ScheduleExportData[] = filteredSchedules.map(schedule => ({
+      'Train Number': schedule.train?.trainNumber ?? schedule.trainId ?? 'N/A',
+      'Train Type': schedule.train?.type?.toUpperCase() ?? 'Unknown',
+      'From': schedule.departureLocation?.name ?? 'N/A',
+      'From Code': schedule.departureLocation?.code ?? 'N/A',
+      'To': schedule.arrivalLocation?.name ?? 'N/A',
+      'To Code': schedule.arrivalLocation?.code ?? 'N/A',
       'Departure': format(new Date(schedule.scheduledDeparture), 'dd/MM/yyyy HH:mm'),
       'Arrival': format(new Date(schedule.scheduledArrival), 'dd/MM/yyyy HH:mm'),
       'Duration': formatDuration(new Date(schedule.scheduledDeparture), new Date(schedule.scheduledArrival)),
@@ -90,9 +109,12 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Train Schedules');
     
-    // Auto-size columns
+    // Auto-size columns with type-safe access
     const colWidths = Object.keys(data[0] || {}).map(key => ({
-      wch: Math.max(key.length, ...data.map(row => String(row[key]).length))
+      wch: Math.max(
+        key.length,
+        ...data.map(row => String(row[key as keyof ScheduleExportData] ?? '').length)
+      )
     }));
     ws['!cols'] = colWidths;
 
@@ -141,21 +163,21 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
         <TableBody>
           {filteredSchedules.map((schedule) => (
             <TableRow key={schedule.id}>
-              <TableCell>{schedule.train?.trainNumber || schedule.trainId}</TableCell>
+              <TableCell>{schedule.train?.trainNumber ?? schedule.trainId}</TableCell>
               <TableCell>
                 <Badge variant="outline">
-                  {schedule.train?.type?.toUpperCase() || 'Unknown'}
+                  {schedule.train?.type?.toUpperCase() ?? 'Unknown'}
                 </Badge>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <span>{schedule.departureLocation?.name || schedule.departureLocationId}</span>
+                  <span>{schedule.departureLocation?.name ?? schedule.departureLocationId}</span>
                   <span className="text-xs text-muted-foreground">{schedule.departureLocation?.code}</span>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <span>{schedule.arrivalLocation?.name || schedule.arrivalLocationId}</span>
+                  <span>{schedule.arrivalLocation?.name ?? schedule.arrivalLocationId}</span>
                   <span className="text-xs text-muted-foreground">{schedule.arrivalLocation?.code}</span>
                 </div>
               </TableCell>

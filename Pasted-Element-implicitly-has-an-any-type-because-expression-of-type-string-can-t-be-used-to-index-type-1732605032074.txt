@@ -1,0 +1,36 @@
+Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ 'Train Number': string | number | null; 'Train Type': string; From: string | undefined; 'From Code': string | undefined; To: string | undefined; 'To Code': string | undefined; Departure: string; ... 4 more ...; 'Effective Period': string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ 'Train Number': string | number | null; 'Train Type': string; From: string | undefined; 'From Code': string | undefined; To: string | undefined; 'To Code': string | undefined; Departure: string; ... 4 more ...; 'Effective Period': string; }'.
+ FILE  /home/runner/workspace/client/src/components/TrainRoutes.tsx:95:59
+
+    93 |     // Auto-size columns
+    94 |     const colWidths = Object.keys(data[0] || {}).map(key => ({
+  > 95 |       wch: Math.max(key.length, ...data.map(row => String(row[key]).length))
+       |                                                           ^^^^^^^^
+    96 |     }));
+    97 |     ws['!cols'] = colWidths;
+    98 |
+
+ ERROR(TypeScript)  Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+ FILE  /home/runner/workspace/client/src/components/TrainRoutes.tsx:113:40
+
+    111 |               <SelectItem value="all">All Types</SelectItem>
+    112 |               {trainTypes.map((type) => (
+  > 113 |                 <SelectItem key={type} value={type}>
+        |                                        ^^^^^
+    114 |                   {type.toUpperCase()}
+    115 |                 </SelectItem>
+    116 |               ))}
+
+ ERROR(TypeScript)  'type' is possibly 'undefined'.
+ FILE  /home/runner/workspace/client/src/components/TrainRoutes.tsx:114:20
+
+    112 |               {trainTypes.map((type) => (
+    113 |                 <SelectItem key={type} value={type}>
+  > 114 |                   {type.toUpperCase()}
+        |                    ^^^^
+    115 |                 </SelectItem>
+    116 |               ))}
+    117 |             </SelectContent>
+
+[TypeScript] Found 3 errors. Watching for file changes.
