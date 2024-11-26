@@ -63,20 +63,6 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Health check endpoint
-  app.get("/api/health", async (req, res) => {
-    try {
-      const isDbHealthy = await checkDbConnection();
-      if (isDbHealthy) {
-        res.json({ status: "healthy", database: "connected" });
-      } else {
-        res.status(503).json({ status: "unhealthy", database: "disconnected" });
-      }
-    } catch (error) {
-      res.status(500).json({ status: "error", message: "Failed to check database health" });
-    }
-  });
-
   // Schedules endpoint with proper table aliasing
   app.get("/api/schedules", async (req, res) => {
     try {
@@ -133,6 +119,17 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       console.error("[API] Failed to fetch schedules:", error);
       res.status(500).json({ error: "Failed to fetch schedules" });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Simple check - if we can query the database, it's healthy
+      await db.select().from(users).limit(1);
+      res.json({ status: "healthy", database: "connected" });
+    } catch (error) {
+      res.status(503).json({ status: "unhealthy", database: "disconnected" });
     }
   });
 
@@ -705,17 +702,4 @@ async function checkScheduleConflicts(trainId: number, scheduledDeparture: Date,
       res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
-
-  // This endpoint is already defined above and should not be duplicated.
-  // app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => { ... });
-
-}
-
-async function checkDbConnection() {
-  try {
-    await db.execute(sql`SELECT 1`);
-    return true;
-  } catch (error) {
-    return false;
-  }
 }
