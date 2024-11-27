@@ -192,5 +192,159 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Other routes remain unchanged...
+  // Location management endpoints with proper validation and error handling
+  app.post("/api/locations", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      // Create a Zod schema for location validation
+      const locationSchema = z.object({
+        name: z.string().min(1, "Location name is required"),
+        code: z.string().min(1, "Location code is required").max(10, "Location code must be 10 characters or less").toUpperCase(),
+      });
+      
+      // Validate the request body
+      const result = locationSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid location data",
+          details: result.error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        });
+      }
+
+      const { name, code } = result.data;
+
+      // Check for existing location with same code
+      const [existingLocation] = await db
+        .select()
+        .from(locations)
+        .where(eq(locations.code, code))
+        .limit(1);
+
+      if (existingLocation) {
+        return res.status(409).json({
+          error: "Location already exists",
+          details: `A location with code ${code} already exists`
+        });
+      }
+
+      // Insert the new location
+      const [newLocation] = await db
+        .insert(locations)
+        .values({
+          name,
+          code
+        })
+        .returning();
+
+      res.status(200).json({
+        message: "Location created successfully",
+        location: newLocation
+      });
+    } catch (error) {
+      console.error("[API] Failed to create location:", error);
+      res.status(500).json({
+        error: "Failed to create location",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
+  app.get("/api/locations", async (req, res) => {
+    try {
+      const allLocations = await db
+        .select()
+        .from(locations)
+        .orderBy(locations.name);
+
+      res.json(allLocations);
+    } catch (error) {
+      console.error("[API] Failed to fetch locations:", error);
+      res.status(500).json({
+        error: "Failed to fetch locations",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
+  // Bulk import locations with validation
+  app.post("/api/locations/import", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const locationSchema = z.object({
+        name: z.string().min(1, "Location name is required"),
+        code: z.string().min(1, "Location code is required").max(10, "Location code must be 10 characters or less").toUpperCase(),
+      });
+
+      const locationsArray = z.array(locationSchema);
+      const result = locationsArray.safeParse(req.body);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid location data",
+          details: result.error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        });
+      }
+
+      const locations_to_import = result.data;
+      const results = {
+        success: [] as any[],
+        failures: [] as any[]
+      };
+
+      // Use a transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        for (const location of locations_to_import) {
+          try {
+            // Check for existing location
+            const [existingLocation] = await tx
+              .select()
+              .from(locations)
+              .where(eq(locations.code, location.code))
+              .limit(1);
+
+            if (existingLocation) {
+              results.failures.push({
+                location,
+                error: `Location with code ${location.code} already exists`
+              });
+              continue;
+            }
+
+            // Insert new location
+            const [newLocation] = await tx
+              .insert(locations)
+              .values(location)
+              .returning();
+
+            results.success.push(newLocation);
+          } catch (error) {
+            results.failures.push({
+              location,
+              error: error instanceof Error ? error.message : "Unknown error"
+            });
+          }
+        }
+      });
+
+      res.json({
+        message: "Import completed",
+        summary: {
+          total: locations_to_import.length,
+          successful: results.success.length,
+          failed: results.failures.length
+        },
+        results
+      });
+    } catch (error) {
+      console.error("[API] Failed to import locations:", error);
+      res.status(500).json({
+        error: "Failed to import locations",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
 }
