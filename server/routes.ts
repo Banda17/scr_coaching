@@ -23,9 +23,13 @@ export function registerRoutes(app: Express) {
   app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
     try {
       const tableSchema = z.object({
-        tables: z.array(z.enum(['schedules', 'trains', 'locations', 'users'])),
-        preserveAdmin: z.boolean().default(true),
+        tables: z.array(z.enum(['schedules', 'trains', 'locations', 'users']))
+          .min(1, "At least one table must be selected for cleaning")
+          .describe("Tables to clean"),
+        preserveAdmin: z.boolean().default(true)
+          .describe("Whether to preserve admin users"),
         preserveReferences: z.boolean().default(true)
+          .describe("Whether to preserve referenced records")
       });
       
       const { tables, preserveAdmin, preserveReferences } = tableSchema.parse(req.body);
