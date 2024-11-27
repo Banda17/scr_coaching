@@ -51,7 +51,13 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
     try {
-      if (!req.user || req.user.role !== UserRole.Admin) {
+      // Verify user authentication
+      if (!req.user) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // Verify admin role
+      if (req.user.role !== UserRole.Admin) {
         return res.status(403).json({ error: "Admin privileges required" });
       }
 
@@ -67,6 +73,16 @@ export function registerRoutes(app: Express) {
       
       // Start a transaction to ensure data consistency
       await db.transaction(async (tx) => {
+        // Create audit log entry for the clean operation start
+        const auditEntry = await tx.insert(auditLogs).values({
+          userId: req.user.id,
+          action: 'clean_tables_start',
+          tableName: 'multiple',
+          details: { tables, preserveAdmin, preserveReferences },
+          ipAddress: clientIp as string,
+          status: 'in_progress'
+        }).returning();
+
         // Sort tables to handle dependencies
         const sortedTables = [...tables].sort((a, b) => {
           // Ensure schedules are cleaned first as they reference other tables
@@ -79,85 +95,145 @@ export function registerRoutes(app: Express) {
           try {
             switch (table) {
               case 'schedules':
-                await tx.delete(schedules);
-                await tx.insert(auditLogs).values({
-                  userId: req.user.id,
-                  action: 'clean_table',
-                  tableName: 'schedules',
-                  details: { preserveReferences },
-                  ipAddress: clientIp as string,
-                });
-                console.log('[Clean Tables] Successfully cleaned schedules table');
+                try {
+                  await tx.delete(schedules);
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'schedules',
+                    details: { preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'success'
+                  });
+                  console.log('[Clean Tables] Successfully cleaned schedules table');
+                } catch (error) {
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'schedules',
+                    details: { error: error instanceof Error ? error.message : 'Unknown error', preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'error'
+                  });
+                  throw error;
+                }
                 break;
               
               case 'trains':
-                if (preserveReferences) {
-                  // Check if any schedules reference this train
-                  const trainsInUse = await tx
-                    .select({ id: trains.id })
-                    .from(trains)
-                    .innerJoin(schedules, eq(schedules.trainId, trains.id));
-                  
-                  if (trainsInUse.length > 0) {
-                    throw new Error('Cannot clean trains table while preserving references - trains are still in use by schedules');
+                try {
+                  if (preserveReferences) {
+                    // Check if any schedules reference this train
+                    const trainsInUse = await tx
+                      .select({ id: trains.id })
+                      .from(trains)
+                      .innerJoin(schedules, eq(schedules.trainId, trains.id));
+                    
+                    if (trainsInUse.length > 0) {
+                      throw new Error('Cannot clean trains table while preserving references - trains are still in use by schedules');
+                    }
                   }
+                  await tx.delete(trains);
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'trains',
+                    details: { preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'success'
+                  });
+                  console.log('[Clean Tables] Successfully cleaned trains table');
+                } catch (error) {
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'trains',
+                    details: { error: error instanceof Error ? error.message : 'Unknown error', preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'error'
+                  });
+                  throw error;
                 }
-                await tx.delete(trains);
-                await tx.insert(auditLogs).values({
-                  userId: req.user.id,
-                  action: 'clean_table',
-                  tableName: 'trains',
-                  details: { preserveReferences },
-                  ipAddress: clientIp as string,
-                });
-                console.log('[Clean Tables] Successfully cleaned trains table');
                 break;
               
               case 'locations':
-                if (preserveReferences) {
-                  // Check if any schedules reference these locations
-                  const locationsInUse = await tx
-                    .select({ id: locations.id })
-                    .from(locations)
-                    .innerJoin(
-                      schedules,
-                      or(
-                        eq(schedules.departureLocationId, locations.id),
-                        eq(schedules.arrivalLocationId, locations.id)
-                      )
-                    );
-                  
-                  if (locationsInUse.length > 0) {
-                    throw new Error('Cannot clean locations table while preserving references - locations are still in use by schedules');
+                try {
+                  if (preserveReferences) {
+                    // Check if any schedules reference these locations
+                    const locationsInUse = await tx
+                      .select({ id: locations.id })
+                      .from(locations)
+                      .innerJoin(
+                        schedules,
+                        or(
+                          eq(schedules.departureLocationId, locations.id),
+                          eq(schedules.arrivalLocationId, locations.id)
+                        )
+                      );
+                    
+                    if (locationsInUse.length > 0) {
+                      throw new Error('Cannot clean locations table while preserving references - locations are still in use by schedules');
+                    }
                   }
+                  await tx.delete(locations);
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'locations',
+                    details: { preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'success'
+                  });
+                  console.log('[Clean Tables] Successfully cleaned locations table');
+                } catch (error) {
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'locations',
+                    details: { error: error instanceof Error ? error.message : 'Unknown error', preserveReferences },
+                    ipAddress: clientIp as string,
+                    status: 'error'
+                  });
+                  throw error;
                 }
-                await tx.delete(locations);
-                await tx.insert(auditLogs).values({
-                  userId: req.user.id,
-                  action: 'clean_table',
-                  tableName: 'locations',
-                  details: { preserveReferences },
-                  ipAddress: clientIp as string,
-                });
-                console.log('[Clean Tables] Successfully cleaned locations table');
                 break;
               
               case 'users':
-                if (preserveAdmin) {
-                  await tx
-                    .delete(users)
-                    .where(sql`role != ${UserRole.Admin}`);
-                  console.log('[Clean Tables] Successfully cleaned non-admin users');
-                } else {
-                  await tx.delete(users);
+                try {
+                  if (preserveAdmin) {
+                    await tx
+                      .delete(users)
+                      .where(sql`role != ${UserRole.Admin}`);
+                    await tx.insert(auditLogs).values({
+                      userId: req.user.id,
+                      action: 'clean_table',
+                      tableName: 'users',
+                      details: { preserveAdmin, mode: 'non_admin_only' },
+                      ipAddress: clientIp as string,
+                      status: 'success'
+                    });
+                    console.log('[Clean Tables] Successfully cleaned non-admin users');
+                  } else {
+                    await tx.delete(users);
+                    await tx.insert(auditLogs).values({
+                      userId: req.user.id,
+                      action: 'clean_table',
+                      tableName: 'users',
+                      details: { preserveAdmin, mode: 'all_users' },
+                      ipAddress: clientIp as string,
+                      status: 'success'
+                    });
+                    console.log('[Clean Tables] Successfully cleaned all users');
+                  }
+                } catch (error) {
                   await tx.insert(auditLogs).values({
                     userId: req.user.id,
                     action: 'clean_table',
                     tableName: 'users',
-                    details: { preserveAdmin },
+                    details: { error: error instanceof Error ? error.message : 'Unknown error', preserveAdmin },
                     ipAddress: clientIp as string,
+                    status: 'error'
                   });
-                  console.log('[Clean Tables] Successfully cleaned all users');
+                  throw error;
                 }
                 break;
             }
@@ -168,6 +244,19 @@ export function registerRoutes(app: Express) {
         }
       });
 
+      // Update the initial audit log entry with success status
+      await db.update(auditLogs)
+        .set({ 
+          status: 'success',
+          details: { 
+            message: `Successfully cleaned tables: ${tables.join(', ')}`,
+            preserveAdmin,
+            preserveReferences,
+            cleanedTables: tables
+          }
+        })
+        .where(eq(auditLogs.id, auditEntry[0].id));
+
       res.json({ 
         success: true, 
         message: `Successfully cleaned tables: ${tables.join(', ')}`,
@@ -177,6 +266,26 @@ export function registerRoutes(app: Express) {
       });
     } catch (error) {
       console.error("[API] Failed to clean tables:", error);
+
+      // Create a final audit log entry for the failure
+      try {
+        await db.insert(auditLogs).values({
+          userId: req.user?.id,
+          action: 'clean_tables_error',
+          tableName: 'multiple',
+          details: { 
+            error: error instanceof Error ? error.message : "Unknown error",
+            tables,
+            preserveAdmin,
+            preserveReferences
+          },
+          ipAddress: clientIp as string,
+          status: 'error'
+        });
+      } catch (auditError) {
+        console.error("[API] Failed to create audit log entry:", auditError);
+      }
+
       res.status(500).json({ 
         error: "Failed to clean tables",
         details: error instanceof Error ? error.message : "Unknown error"
