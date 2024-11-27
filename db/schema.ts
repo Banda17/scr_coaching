@@ -92,3 +92,19 @@ export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = z.infer<typeof selectUserSchema>;
+// Audit logs for tracking system changes
+export const auditLogs = pgTable("audit_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  tableName: text("table_name").notNull(),
+  details: json("details").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+  ipAddress: text("ip_address"),
+  status: text("status").notNull().default('success')
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs);
+export const selectAuditLogSchema = createSelectSchema(auditLogs);
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = z.infer<typeof selectAuditLogSchema>;

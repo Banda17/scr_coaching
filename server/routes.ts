@@ -2,7 +2,7 @@ import type { Express } from "express";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { db } from "../db";
-import { schedules, trains, locations, users } from "@db/schema";
+import { schedules, trains, locations, users, auditLogs } from "@db/schema";
 import { eq, sql, and, gte, lte, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { requireRole, setupAuth } from "./auth";
@@ -20,11 +20,42 @@ export function registerRoutes(app: Express) {
   const arrivalLocations = alias(locations, 'arrival_locations');
 
   // Selective table cleaning endpoint with proper error handling and logging
+  // Audit log endpoint
+  app.get("/api/admin/audit-logs", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const logs = await db
+        .select({
+          id: auditLogs.id,
+          userId: auditLogs.userId,
+          action: auditLogs.action,
+          tableName: auditLogs.tableName,
+          details: auditLogs.details,
+          timestamp: auditLogs.timestamp,
+          ipAddress: auditLogs.ipAddress,
+          status: auditLogs.status,
+          user: {
+            username: users.username,
+            role: users.role
+          }
+        })
+        .from(auditLogs)
+        .leftJoin(users, eq(auditLogs.userId, users.id))
+        .orderBy(desc(auditLogs.timestamp));
+
+      res.json(logs);
+    } catch (error) {
+      console.error("[API] Failed to fetch audit logs:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
   app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
     try {
       if (!req.user || req.user.role !== UserRole.Admin) {
         return res.status(403).json({ error: "Admin privileges required" });
       }
+
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
       const tableSchema = z.object({
         tables: z.array(z.enum(['schedules', 'trains', 'locations', 'users'])).min(1),
@@ -49,6 +80,13 @@ export function registerRoutes(app: Express) {
             switch (table) {
               case 'schedules':
                 await tx.delete(schedules);
+                await tx.insert(auditLogs).values({
+                  userId: req.user.id,
+                  action: 'clean_table',
+                  tableName: 'schedules',
+                  details: { preserveReferences },
+                  ipAddress: clientIp as string,
+                });
                 console.log('[Clean Tables] Successfully cleaned schedules table');
                 break;
               
@@ -65,6 +103,13 @@ export function registerRoutes(app: Express) {
                   }
                 }
                 await tx.delete(trains);
+                await tx.insert(auditLogs).values({
+                  userId: req.user.id,
+                  action: 'clean_table',
+                  tableName: 'trains',
+                  details: { preserveReferences },
+                  ipAddress: clientIp as string,
+                });
                 console.log('[Clean Tables] Successfully cleaned trains table');
                 break;
               
@@ -87,6 +132,13 @@ export function registerRoutes(app: Express) {
                   }
                 }
                 await tx.delete(locations);
+                await tx.insert(auditLogs).values({
+                  userId: req.user.id,
+                  action: 'clean_table',
+                  tableName: 'locations',
+                  details: { preserveReferences },
+                  ipAddress: clientIp as string,
+                });
                 console.log('[Clean Tables] Successfully cleaned locations table');
                 break;
               
@@ -98,6 +150,13 @@ export function registerRoutes(app: Express) {
                   console.log('[Clean Tables] Successfully cleaned non-admin users');
                 } else {
                   await tx.delete(users);
+                  await tx.insert(auditLogs).values({
+                    userId: req.user.id,
+                    action: 'clean_table',
+                    tableName: 'users',
+                    details: { preserveAdmin },
+                    ipAddress: clientIp as string,
+                  });
                   console.log('[Clean Tables] Successfully cleaned all users');
                 }
                 break;
