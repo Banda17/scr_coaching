@@ -22,14 +22,14 @@ export function registerRoutes(app: Express) {
   // Selective table cleaning endpoint with proper error handling and logging
   app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
     try {
+      if (!req.user || req.user.role !== UserRole.Admin) {
+        return res.status(403).json({ error: "Admin privileges required" });
+      }
+
       const tableSchema = z.object({
-        tables: z.array(z.enum(['schedules', 'trains', 'locations', 'users']))
-          .min(1, "At least one table must be selected for cleaning")
-          .describe("Tables to clean"),
-        preserveAdmin: z.boolean().default(true)
-          .describe("Whether to preserve admin users"),
+        tables: z.array(z.enum(['schedules', 'trains', 'locations', 'users'])).min(1),
+        preserveAdmin: z.boolean().default(true),
         preserveReferences: z.boolean().default(true)
-          .describe("Whether to preserve referenced records")
       });
       
       const { tables, preserveAdmin, preserveReferences } = tableSchema.parse(req.body);

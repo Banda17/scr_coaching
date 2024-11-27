@@ -56,7 +56,11 @@ export function setupAuth(app: Express) {
     secret: process.env.REPL_ID || "railway-operations-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {},
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
@@ -180,20 +184,21 @@ export function setupAuth(app: Express) {
     passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
       if (err) {
         console.error("[Auth] Login error:", err);
-        return res.status(500).send("Internal server error");
+        return res.status(500).json({ error: "Internal server error" });
       }
 
       if (!user) {
         console.log("[Auth] Login failed:", info.message);
-        return res.status(400).send(info.message ?? "Invalid username or password");
+        return res.status(400).json({ error: info.message ?? "Invalid username or password" });
       }
 
       req.logIn(user, (err) => {
         if (err) {
           console.error("[Auth] Session error:", err);
-          return res.status(500).send("Failed to create session");
+          return res.status(500).json({ error: "Failed to create session" });
         }
 
+        res.setHeader('Content-Type', 'application/json');
         return res.json({
           message: "Login successful",
           user: { id: user.id, username: user.username, role: user.role }
