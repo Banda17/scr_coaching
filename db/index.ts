@@ -81,10 +81,10 @@ export async function seedInitialData() {
     }
     // Add sample trains
     const sampleTrains = [
-      { trainNumber: 'TRC101', description: 'TRC Service', type: TrainType.TRC },
-      { trainNumber: 'SPIC201', description: 'SPIC Service', type: TrainType.SPIC },
-      { trainNumber: 'SPL301', description: 'SPL Transport', type: TrainType.SPL },
-      { trainNumber: 'SLN401', description: 'SALOON Service', type: TrainType.SALOON },
+      { trainNumber: 'TRC', description: 'TRC Service', type: TrainType.TRC },
+      { trainNumber: 'SPIC', description: 'SPIC Service', type: TrainType.SPIC },
+      { trainNumber: 'SPL', description: 'SPL Transport', type: TrainType.SPL },
+      { trainNumber: 'SALOON', description: 'SALOON Service', type: TrainType.SALOON },
     ];
 
     for (const train of sampleTrains) {
@@ -94,11 +94,11 @@ export async function seedInitialData() {
 
     // Add common stations
     const sampleLocations = [
-      { name: 'Central Station', code: 'CTL' },
-      { name: 'North Terminal', code: 'NTH' },
-      { name: 'South Junction', code: 'STH' },
-      { name: 'East Gateway', code: 'EST' },
-      { name: 'West Port', code: 'WST' },
+      { name: 'VIJAYWADA', code: 'BZA' },
+      { name: 'KAKINADA', code: 'COA' },
+      { name: 'KONDAPALLI', code: 'KI' },
+      { name: 'GUDUR', code: 'GDR' },
+      { name: 'DUVVADA', code: 'DVD' },
     ];
 
     for (const location of sampleLocations) {
