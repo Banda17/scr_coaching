@@ -173,6 +173,24 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Trains endpoints
+  app.get("/api/trains", async (req, res) => {
+    try {
+      const allTrains = await db
+        .select()
+        .from(trains)
+        .orderBy(trains.trainNumber);
+
+      res.json(allTrains);
+    } catch (error) {
+      console.error("[API] Failed to fetch trains:", error);
+      res.status(500).json({
+        error: "Failed to fetch trains",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
   
 
   // Health check endpoint

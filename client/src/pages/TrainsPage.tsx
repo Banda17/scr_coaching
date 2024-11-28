@@ -186,19 +186,19 @@ export default function TrainsPage() {
           <TableBody>
             {filteredAndSortedTrains.map((train) => (
               <TableRow key={train.id}>
-                <TableCell>{train.trainNumber}</TableCell>
+                <TableCell className="font-medium">{train.trainNumber}</TableCell>
                 <TableCell>
                   <Badge className={cn("text-white", getTypeColor(train.type))}>
                     {train.type}
                   </Badge>
                 </TableCell>
-                <TableCell>{train.description}</TableCell>
+                <TableCell>{train.description || '-'}</TableCell>
                 <TableCell>
                   <Badge className={cn("text-white", getStatusColor(train.currentStatus))}>
-                    {train.currentStatus}
+                    {train.currentStatus || 'idle'}
                   </Badge>
                 </TableCell>
-                <TableCell>{train.scheduleCount}</TableCell>
+                <TableCell>{train.scheduleCount || 0}</TableCell>
               </TableRow>
             ))}
           </TableBody>

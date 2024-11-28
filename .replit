@@ -79,6 +79,10 @@ args = "Final Documentation Check"
 task = "workflow.run"
 args = "Installation Documentation Review"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend"
+
 [[workflows.workflow]]
 name = "Railway Operations System"
 author = "agent"
@@ -299,3 +303,18 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cat docs/INSTALLATION.md docs/WINDOWS_INSTALLATION.md docs/LINUX_INSTALLATION.md"
+
+[[workflows.workflow]]
+name = "Frontend"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
+waitForPort = 80
