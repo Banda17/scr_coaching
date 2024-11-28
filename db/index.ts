@@ -79,32 +79,8 @@ export async function seedInitialData() {
       });
       console.log("[Database] Created admin user with credentials - username: admin, password: admin123");
     }
-    // Add sample trains
-    const sampleTrains = [
-      { trainNumber: 'TRC', description: 'TRC Service', type: TrainType.TRC },
-      { trainNumber: 'SPIC', description: 'SPIC Service', type: TrainType.SPIC },
-      { trainNumber: 'SPL', description: 'SPL Transport', type: TrainType.SPL },
-      { trainNumber: 'SALOON', description: 'SALOON Service', type: TrainType.SALOON },
-    ];
-
-    for (const train of sampleTrains) {
-      await db.insert(trains).values(train).onConflictDoNothing();
-    }
-    console.log("[Database] Sample trains seeded successfully");
-
-    // Add common stations
-    const sampleLocations = [
-      { name: 'VIJAYWADA', code: 'BZA' },
-      { name: 'KAKINADA', code: 'COA' },
-      { name: 'KONDAPALLI', code: 'KI' },
-      { name: 'GUDUR', code: 'GDR' },
-      { name: 'DUVVADA', code: 'DVD' },
-    ];
-
-    for (const location of sampleLocations) {
-      await db.insert(locations).values(location).onConflictDoNothing();
-    }
-    console.log("[Database] Sample locations seeded successfully");
+    // Admin user creation is sufficient for initial setup
+    console.log("[Database] Initial setup completed");
 
     return true;
   } catch (error) {
