@@ -23,7 +23,17 @@ export const TrainType = {
   Express: 'express',
   Local: 'local',
   Freight: 'freight',
-  Special: 'special'
+  SPIC: 'spic',
+  FTR: 'ftr',
+  SALOON: 'saloon',
+  TRC: 'trc',
+  Passenger: 'passenger',
+  MailExpress: 'mail_express',
+  Superfast: 'superfast',
+  Premium: 'premium',
+  Suburban: 'suburban',
+  MEMU: 'memu',
+  DEMU: 'demu'
 } as const;
 
 export type TrainType = typeof TrainType[keyof typeof TrainType];

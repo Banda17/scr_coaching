@@ -98,13 +98,33 @@ export default function TrainsPage() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'express':
-        return 'bg-blue-500';
+        return 'bg-blue-500';  // Blue for express trains
       case 'local':
-        return 'bg-green-500';
+        return 'bg-green-500'; // Green for local trains
       case 'freight':
-        return 'bg-amber-500';
-      case 'special':
-        return 'bg-purple-500';
+        return 'bg-amber-500'; // Amber for freight trains
+      case 'spic':
+        return 'bg-purple-500'; // Purple for inspection trains
+      case 'ftr':
+        return 'bg-orange-500'; // Orange for full tariff rake
+      case 'saloon':
+        return 'bg-rose-500';   // Rose for officer saloons
+      case 'trc':
+        return 'bg-indigo-500'; // Indigo for track recording cars
+      case 'passenger':
+        return 'bg-sky-500';    // Sky blue for passenger trains
+      case 'mail_express':
+        return 'bg-emerald-500'; // Emerald for mail express
+      case 'superfast':
+        return 'bg-violet-500';  // Violet for superfast trains
+      case 'premium':
+        return 'bg-pink-500';    // Pink for premium trains
+      case 'suburban':
+        return 'bg-yellow-500';  // Yellow for suburban trains
+      case 'memu':
+        return 'bg-cyan-500';    // Cyan for MEMU trains
+      case 'demu':
+        return 'bg-teal-500';    // Teal for DEMU trains
       default:
         return 'bg-slate-500';
     }
@@ -143,11 +163,21 @@ export default function TrainsPage() {
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem> {/* Use 'all' here */}
+            <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="express">Express</SelectItem>
             <SelectItem value="local">Local</SelectItem>
             <SelectItem value="freight">Freight</SelectItem>
-            <SelectItem value="special">Special</SelectItem>
+            <SelectItem value="spic">SPIC (Inspection)</SelectItem>
+            <SelectItem value="ftr">FTR (Full Tariff Rake)</SelectItem>
+            <SelectItem value="saloon">SALOON (Officers)</SelectItem>
+            <SelectItem value="trc">TRC (Track Recording)</SelectItem>
+            <SelectItem value="passenger">Passenger</SelectItem>
+            <SelectItem value="mail_express">Mail Express</SelectItem>
+            <SelectItem value="superfast">Superfast</SelectItem>
+            <SelectItem value="premium">Premium</SelectItem>
+            <SelectItem value="suburban">Suburban</SelectItem>
+            <SelectItem value="memu">MEMU</SelectItem>
+            <SelectItem value="demu">DEMU</SelectItem>
           </SelectContent>
         </Select>
       </div>

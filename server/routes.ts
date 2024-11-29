@@ -1,13 +1,14 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
+import express from 'express';
+const router = express.Router();
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { db } from "../db";
-import { schedules, trains, locations, users } from "@db/schema";
+import { schedules, trains, locations, users, TrainType } from "@db/schema";
 import { eq, sql, and, gte, lte, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { requireRole, setupAuth } from "./auth";
 import { UserRole } from "@db/schema";
-import { crypto } from "./auth";
 import * as z from "zod";
 
 const upload = multer();
@@ -18,8 +19,6 @@ export function registerRoutes(app: Express) {
 
   // Create table aliases for locations
   const arrivalLocations = alias(locations, 'arrival_locations');
-
-  
 
   // Table cleaning endpoint with audit logging
   app.post("/api/admin/clean-tables", requireRole(UserRole.Admin), async (req, res) => {
@@ -113,6 +112,191 @@ export function registerRoutes(app: Express) {
       res.status(500).json({
         error: "Failed to clean tables",
         details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Train types import endpoint with proper validation and authentication
+  app.post("/api/trains/import-types", requireRole(UserRole.Admin), async (req: Request, res: Response) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const trainTypeSchema = z.object({
+        type: z.nativeEnum(TrainType),
+        description: z.string().min(1, "Description is required"),
+        max_speed: z.number().positive().optional(),
+        priority_level: z.number().min(1).max(10).optional(),
+        features: z.array(z.string()).optional()
+      });
+
+      const importSchema = z.object({
+        train_types: z.array(trainTypeSchema).min(1, "At least one train type is required")
+      });
+
+      const result = importSchema.safeParse(req.body);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid train types data",
+          details: result.error.issues
+        });
+      }
+
+      const results = {
+        success: [] as any[],
+        failures: [] as any[]
+      };
+
+      // Validate and map train type to our system's TrainType enum
+      function validateAndMapTrainType(type: string): TrainType {
+        // Create a mapping between various formats and our TrainType enum
+        const typeMapping: Record<string, TrainType> = {
+          // Standard formats
+          'express': TrainType.Express,
+          'local': TrainType.Local,
+          'freight': TrainType.Freight,
+          'spic': TrainType.SPIC,
+          'ftr': TrainType.FTR,
+          'saloon': TrainType.SALOON,
+          'trc': TrainType.TRC,
+          'passenger': TrainType.Passenger,
+          'mail_express': TrainType.MailExpress,
+          'superfast': TrainType.Superfast,
+          'premium': TrainType.Premium,
+          'suburban': TrainType.Suburban,
+          'memu': TrainType.MEMU,
+          'demu': TrainType.DEMU,
+          
+          // Alternative formats
+          'exp': TrainType.Express,
+          'mail': TrainType.MailExpress,
+          'sf': TrainType.Superfast,
+          'sub': TrainType.Suburban,
+          'pass': TrainType.Passenger,
+        };
+        
+        const normalizedType = type.toLowerCase().trim();
+        
+        // Check for exact match
+        if (normalizedType in typeMapping) {
+          return typeMapping[normalizedType];
+        }
+        
+        // Check for partial matches
+        const partialMatches = Object.entries(typeMapping)
+          .filter(([key]) => key.includes(normalizedType) || normalizedType.includes(key));
+        
+        if (partialMatches.length === 1) {
+          return partialMatches[0][1];
+        }
+        
+        if (partialMatches.length > 1) {
+          throw new Error(`Ambiguous train type '${type}'. Could match: ${partialMatches.map(([key]) => key).join(', ')}`);
+        }
+        
+        throw new Error(`Unsupported train type: ${type}. Valid types are: ${Object.keys(typeMapping).join(', ')}`);
+      }
+
+      await db.transaction(async (tx) => {
+        for (const trainType of result.data.train_types) {
+          try {
+            // Generate a unique and formatted train number
+            const generateTrainNumber = (type: string, index: number): string => {
+              const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
+              const sequence = index.toString().padStart(3, '0');
+              const typePrefix = type.toUpperCase().slice(0, 3);
+              return `${typePrefix}${timestamp}${sequence}`;
+            };
+
+            // Validate train type before processing
+            const mappedType = validateAndMapTrainType(trainType.type);
+            
+            // Generate unique train number with retry logic
+            let trainNumber: string;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            do {
+              trainNumber = generateTrainNumber(mappedType, retryCount);
+              const [existingTrain] = await tx
+                .select()
+                .from(trains)
+                .where(eq(trains.trainNumber, trainNumber))
+                .limit(1);
+
+              if (!existingTrain) break;
+              retryCount++;
+            } while (retryCount < maxRetries);
+
+            if (retryCount >= maxRetries) {
+              throw new Error(`Failed to generate unique train number after ${maxRetries} attempts`);
+            }
+
+            const [newTrain] = await tx
+              .insert(trains)
+              .values({
+                trainNumber,
+                description: trainType.description,
+                type: mappedType,
+                maxSpeed: trainType.max_speed ?? null,
+                priorityLevel: trainType.priority_level ?? null,
+                features: trainType.features ?? []
+              })
+              .returning();
+
+            results.success.push({
+              originalType: trainType.type,
+              mappedType,
+              trainNumber,
+              trainId: newTrain.id,
+              description: newTrain.description,
+              features: newTrain.features
+            });
+          } catch (error) {
+            console.error("[API] Failed to import train type:", trainType, error);
+            results.failures.push({
+              trainType,
+              error: error instanceof Error ? error.message : "Unknown error"
+            });
+          }
+        }
+      });
+
+      console.log("[API] Train types import completed:", {
+        total: result.data.train_types.length,
+        successful: results.success.length,
+        failed: results.failures.length,
+        userId: req.user.id
+      });
+
+      const response = {
+        success: true,
+        data: {
+          message: "Train types import completed",
+          summary: {
+            total: result.data.train_types.length,
+            successful: results.success.length,
+            failed: results.failures.length
+          },
+          successfulImports: results.success,
+          failedImports: results.failures,
+          metadata: {
+            acceptedTypes: Object.values(TrainType),
+            requiredFields: ["type", "description"],
+            optionalFields: ["max_speed", "priority_level", "features"],
+            timestamp: new Date().toISOString()
+          }
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      console.error("[API] Failed to import train types:", error);
+      res.status(500).json({
+        error: "Failed to import train types",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
   });
@@ -511,78 +695,5 @@ export function registerRoutes(app: Express) {
     }
   });
 }
-  // Train types import endpoint
-  app.post("/api/trains/import-types", requireRole(UserRole.Admin), async (req, res) => {
-    try {
-      const trainTypeSchema = z.object({
-        type: z.string(),
-        description: z.string(),
-        max_speed: z.number().optional(),
-        passenger_capacity: z.number().optional(),
-        cargo_capacity_tons: z.number().optional(),
-        priority_level: z.number().optional(),
-        features: z.array(z.string()).optional()
-      });
 
-      const importSchema = z.object({
-        train_types: z.array(trainTypeSchema)
-      });
-
-      const result = importSchema.safeParse(req.body);
-
-      if (!result.success) {
-        return res.status(400).json({
-          error: "Invalid train types data",
-          details: result.error.issues
-        });
-      }
-
-      const results = {
-        success: [] as any[],
-        failures: [] as any[]
-      };
-
-      await db.transaction(async (tx) => {
-        for (const trainType of result.data.train_types) {
-          try {
-            const [newTrain] = await tx
-              .insert(trains)
-              .values({
-                trainNumber: `${trainType.type.toUpperCase()}-${Date.now()}`,
-                description: trainType.description,
-                type: trainType.type as TrainType,
-                maxSpeed: trainType.max_speed || null,
-                passengerCapacity: trainType.passenger_capacity || null,
-                cargoCapacityTons: trainType.cargo_capacity_tons || null,
-                priorityLevel: trainType.priority_level || null,
-                features: trainType.features || []
-              })
-              .returning();
-
-            results.success.push(newTrain);
-          } catch (error) {
-            results.failures.push({
-              trainType,
-              error: error instanceof Error ? error.message : "Unknown error"
-            });
-          }
-        }
-      });
-
-      res.json({
-        message: "Import completed",
-        summary: {
-          total: result.data.train_types.length,
-          successful: results.success.length,
-          failed: results.failures.length
-        },
-        results
-      });
-    } catch (error) {
-      console.error("[API] Failed to import train types:", error);
-      res.status(500).json({
-        error: "Failed to import train types",
-        details: error instanceof Error ? error.message : "Unknown error occurred"
-      });
-    }
-  });
+export default router;

@@ -329,7 +329,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
         </div>
 
         {/* Train type specific fields */}
-        {selectedTrain && (selectedTrain.type === TrainType.TRC || selectedTrain.type === TrainType.SALOON) && (
+        {selectedTrain && (selectedTrain.type === TrainType.SALOON || selectedTrain.type === TrainType.FTR) && (
           <>
             <div className="space-y-2">
               <label>Short Route Location</label>
@@ -358,7 +358,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           </>
         )}
 
-        {selectedTrain && (selectedTrain.type === TrainType.SPIC || selectedTrain.type === TrainType.SPL) && (
+        {selectedTrain && (selectedTrain.type === TrainType.Express || selectedTrain.type === TrainType.SPIC) && (
           <>
             <div className="space-y-2">
               <label>Taking Over Time</label>
