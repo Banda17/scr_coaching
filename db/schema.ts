@@ -20,10 +20,10 @@ export const users = pgTable("users", {
 });
 
 export const TrainType = {
-  TRC: 'trc',
-  SPIC: 'spic',
-  SPL: 'spl',
-  SALOON: 'saloon'
+  Express: 'express',
+  Local: 'local',
+  Freight: 'freight',
+  Special: 'special'
 } as const;
 
 export type TrainType = typeof TrainType[keyof typeof TrainType];
@@ -33,6 +33,11 @@ export const trains = pgTable("trains", {
   trainNumber: text("train_number").notNull().unique(),
   description: text("description"),
   type: text("type").notNull().default('local').$type<TrainType>(),
+  maxSpeed: integer("max_speed"),
+  passengerCapacity: integer("passenger_capacity"),
+  cargoCapacityTons: integer("cargo_capacity_tons"),
+  priorityLevel: integer("priority_level"),
+  features: text("features").array(),
 });
 
 export const locations = pgTable("locations", {

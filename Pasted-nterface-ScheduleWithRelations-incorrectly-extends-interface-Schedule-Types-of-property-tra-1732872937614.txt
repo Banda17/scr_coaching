@@ -1,0 +1,79 @@
+nterface 'ScheduleWithRelations' incorrectly extends interface 'Schedule'.
+  Types of property 'train' are incompatible.
+    Type 'Train | undefined' is not assignable to type '{ id: number; trainNumber: string; type: TrainType; description?: string | undefined; } | undefined'.
+      Type 'Train' is not assignable to type '{ id: number; trainNumber: string; type: TrainType; description?: string | undefined; }'.
+        Types of property 'type' are incompatible.
+          Type 'TrainType' is not assignable to type 'import("/home/runner/workspace/db/schema").TrainType'.
+            Type '"express"' is not assignable to type 'TrainType'.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:15:11
+
+    13 | }
+    14 |
+  > 15 | interface ScheduleWithRelations extends Schedule {
+       |           ^^^^^^^^^^^^^^^^^^^^^
+    16 |   train?: Train;
+    17 |   departureLocation?: Location;
+    18 |   arrivalLocation?: Location;
+
+ ERROR(TypeScript)  'schedule.trainId' is possibly 'null'.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:78:56
+
+    76 |     try {
+    77 |       const exportData = schedules.map(schedule => ({
+  > 78 |         'Train Number': schedule.train?.trainNumber || schedule.trainId.toString(),
+       |                                                        ^^^^^^^^^^^^^^^^
+    79 |         'Train Type': schedule.train?.type || 'N/A',
+    80 |         'Train Description': schedule.train?.description || 'N/A',
+    81 |         'Departure Location': schedule.departureLocation?.name || '',
+
+ ERROR(TypeScript)  'schedule.trainId' is possibly 'null'.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:195:50
+
+    193 |                 ],
+    194 |                 ...schedules.map(schedule => [
+  > 195 |                   schedule.train?.trainNumber || schedule.trainId.toString(),
+        |                                                  ^^^^^^^^^^^^^^^^
+    196 |                   schedule.departureLocation?.name || '',
+    197 |                   schedule.arrivalLocation?.name || '',
+    198 |                   new Date(schedule.scheduledDeparture).toLocaleString(),
+
+ ERROR(TypeScript)  Parameter 'currentPage' implicitly has an 'any' type.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:211:18
+
+    209 |           }
+    210 |         ],
+  > 211 |         footer: (currentPage, pageCount) => ({
+        |                  ^^^^^^^^^^^
+    212 |           text: `Page ${currentPage} of ${pageCount}`,
+    213 |           alignment: 'center',
+    214 |           margin: [0, 10, 0, 0]
+
+ ERROR(TypeScript)  Parameter 'pageCount' implicitly has an 'any' type.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:211:31
+
+    209 |           }
+    210 |         ],
+  > 211 |         footer: (currentPage, pageCount) => ({
+        |                               ^^^^^^^^^
+    212 |           text: `Page ${currentPage} of ${pageCount}`,
+    213 |           alignment: 'center',
+    214 |           margin: [0, 10, 0, 0]
+
+ ERROR(TypeScript)  Argument of type '{ content: ({ text: string; style: string; table?: undefined; } | { text: string; style?: undefined; table?: undefined; } | { table: { headerRows: number; widths: string[]; body: (string[] | { text: string; style: string; }[])[]; }; text?: undefined; style?: undefined; })[]; ... 5 more ...; info: { ...; }; }' is not assignable to parameter of type 'TDocumentDefinitions'.
+  Types of property 'footer' are incompatible.
+    Type '(currentPage: any, pageCount: any) => { text: string; alignment: string; margin: number[]; }' is not assignable to type 'Content | DynamicContent | undefined'.
+      Type '(currentPage: any, pageCount: any) => { text: string; alignment: string; margin: number[]; }' is not assignable to type 'DynamicContent'.
+        Type '{ text: string; alignment: string; margin: number[]; }' is not assignable to type 'Content | null | undefined'.
+          Type '{ text: string; alignment: string; margin: number[]; }' is not assignable to type 'ContentText | ContentAnchor | ContentTocItem'.
+            Property 'tocItem' is missing in type '{ text: string; alignment: string; margin: number[]; }' but required in type 'ContentTocItem'.
+ FILE  /home/runner/workspace/client/src/components/ExportButton.tsx:250:40
+
+    248 |       };
+    249 |
+  > 250 |       const pdfDoc = pdfMake.createPdf(docDefinition);
+        |                                        ^^^^^^^^^^^^^
+    251 |       pdfDoc.download('railway_schedules.pdf');
+    252 |
+    253 |       toast({
+
+[TypeScript] Found 6 errors. Watching for file changes.

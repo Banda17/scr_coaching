@@ -1,0 +1,44 @@
+{
+  "train_types": [
+    {
+      "type": "express",
+      "description": "High-speed passenger train with limited stops",
+      "max_speed": 160,
+      "passenger_capacity": 800,
+      "priority_level": 1,
+      "features": ["air_conditioning", "dining_car", "sleeper_cabins"]
+    },
+    {
+      "type": "local",
+      "description": "Regular passenger service with all stops",
+      "max_speed": 120,
+      "passenger_capacity": 500,
+      "priority_level": 2,
+      "features": ["air_conditioning"]
+    },
+    {
+      "type": "freight",
+      "description": "Cargo transport service",
+      "max_speed": 100,
+      "cargo_capacity_tons": 2000,
+      "priority_level": 3,
+      "features": ["heavy_load", "refrigerated_cars"]
+    },
+    {
+      "type": "suburban",
+      "description": "Short-distance commuter service",
+      "max_speed": 100,
+      "passenger_capacity": 400,
+      "priority_level": 2,
+      "features": ["air_conditioning", "standing_space"]
+    },
+    {
+      "type": "intercity",
+      "description": "Long-distance passenger service between major cities",
+      "max_speed": 140,
+      "passenger_capacity": 600,
+      "priority_level": 1,
+      "features": ["air_conditioning", "dining_car", "first_class"]
+    }
+  ]
+}

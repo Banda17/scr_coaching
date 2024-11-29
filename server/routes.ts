@@ -511,3 +511,78 @@ export function registerRoutes(app: Express) {
     }
   });
 }
+  // Train types import endpoint
+  app.post("/api/trains/import-types", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const trainTypeSchema = z.object({
+        type: z.string(),
+        description: z.string(),
+        max_speed: z.number().optional(),
+        passenger_capacity: z.number().optional(),
+        cargo_capacity_tons: z.number().optional(),
+        priority_level: z.number().optional(),
+        features: z.array(z.string()).optional()
+      });
+
+      const importSchema = z.object({
+        train_types: z.array(trainTypeSchema)
+      });
+
+      const result = importSchema.safeParse(req.body);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid train types data",
+          details: result.error.issues
+        });
+      }
+
+      const results = {
+        success: [] as any[],
+        failures: [] as any[]
+      };
+
+      await db.transaction(async (tx) => {
+        for (const trainType of result.data.train_types) {
+          try {
+            const [newTrain] = await tx
+              .insert(trains)
+              .values({
+                trainNumber: `${trainType.type.toUpperCase()}-${Date.now()}`,
+                description: trainType.description,
+                type: trainType.type as TrainType,
+                maxSpeed: trainType.max_speed || null,
+                passengerCapacity: trainType.passenger_capacity || null,
+                cargoCapacityTons: trainType.cargo_capacity_tons || null,
+                priorityLevel: trainType.priority_level || null,
+                features: trainType.features || []
+              })
+              .returning();
+
+            results.success.push(newTrain);
+          } catch (error) {
+            results.failures.push({
+              trainType,
+              error: error instanceof Error ? error.message : "Unknown error"
+            });
+          }
+        }
+      });
+
+      res.json({
+        message: "Import completed",
+        summary: {
+          total: result.data.train_types.length,
+          successful: results.success.length,
+          failed: results.failures.length
+        },
+        results
+      });
+    } catch (error) {
+      console.error("[API] Failed to import train types:", error);
+      res.status(500).json({
+        error: "Failed to import train types",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
