@@ -174,6 +174,175 @@ export function registerRoutes(app: Express) {
   });
 
   
+  // Schedule import/export endpoints
+  app.post("/api/schedules/import", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      const scheduleSchema = z.object({
+        trainId: z.number().min(1, "Train selection is required"),
+        departureLocationId: z.number().min(1, "Departure location is required"),
+        arrivalLocationId: z.number().min(1, "Arrival location is required"),
+        scheduledDeparture: z.string().transform(str => new Date(str)),
+        scheduledArrival: z.string().transform(str => new Date(str)),
+        status: z.enum(['scheduled', 'running', 'delayed', 'completed', 'cancelled']).default('scheduled'),
+        isCancelled: z.boolean().default(false),
+        runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
+        effectiveStartDate: z.string().transform(str => new Date(str)),
+        effectiveEndDate: z.string().nullable().optional(),
+      });
+
+      const schedulesArray = z.array(scheduleSchema);
+      const result = schedulesArray.safeParse(req.body);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid schedule data",
+          details: result.error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        });
+      }
+
+      const schedules_to_import = result.data;
+      const results = {
+        success: [] as any[],
+        failures: [] as any[]
+      };
+
+      // Use a transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        for (const schedule of schedules_to_import) {
+          try {
+            // Verify train exists
+            const [existingTrain] = await tx
+              .select()
+              .from(trains)
+              .where(eq(trains.id, schedule.trainId))
+              .limit(1);
+
+            if (!existingTrain) {
+              results.failures.push({
+                schedule,
+                error: `Train with ID ${schedule.trainId} not found`
+              });
+              continue;
+            }
+
+            // Verify locations exist
+            const [departureLoc] = await tx
+              .select()
+              .from(locations)
+              .where(eq(locations.id, schedule.departureLocationId))
+              .limit(1);
+
+            const [arrivalLoc] = await tx
+              .select()
+              .from(locations)
+              .where(eq(locations.id, schedule.arrivalLocationId))
+              .limit(1);
+
+            if (!departureLoc || !arrivalLoc) {
+              results.failures.push({
+                schedule,
+                error: "Invalid location IDs"
+              });
+              continue;
+            }
+
+            // Insert new schedule with proper date handling
+            const scheduleToInsert = {
+              ...schedule,
+              scheduledDeparture: new Date(schedule.scheduledDeparture),
+              scheduledArrival: new Date(schedule.scheduledArrival),
+              effectiveStartDate: new Date(schedule.effectiveStartDate),
+              effectiveEndDate: schedule.effectiveEndDate ? new Date(schedule.effectiveEndDate) : null
+            };
+
+            const [newSchedule] = await tx
+              .insert(schedules)
+              .values(scheduleToInsert)
+              .returning();
+
+            results.success.push(newSchedule);
+          } catch (error) {
+            results.failures.push({
+              schedule,
+              error: error instanceof Error ? error.message : "Unknown error"
+            });
+          }
+        }
+      });
+
+      res.json({
+        message: "Import completed",
+        summary: {
+          total: schedules_to_import.length,
+          successful: results.success.length,
+          failed: results.failures.length
+        },
+        results
+      });
+    } catch (error) {
+      console.error("[API] Failed to import schedules:", error);
+      res.status(500).json({
+        error: "Failed to import schedules",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
+  app.get("/api/schedules/export", requireRole(UserRole.Admin), async (req, res) => {
+    try {
+      // Get schedules with all required relationships
+      const exportData = await db
+        .select({
+          id: schedules.id,
+          trainId: schedules.trainId,
+          departureLocationId: schedules.departureLocationId,
+          arrivalLocationId: schedules.arrivalLocationId,
+          scheduledDeparture: schedules.scheduledDeparture,
+          scheduledArrival: schedules.scheduledArrival,
+          status: schedules.status,
+          isCancelled: schedules.isCancelled,
+          runningDays: schedules.runningDays,
+          effectiveStartDate: schedules.effectiveStartDate,
+          effectiveEndDate: schedules.effectiveEndDate,
+          train: {
+            id: trains.id,
+            trainNumber: trains.trainNumber,
+            type: trains.type,
+            description: trains.description
+          },
+          departureLocation: {
+            id: locations.id,
+            name: locations.name,
+            code: locations.code
+          },
+          arrivalLocation: {
+            id: arrivalLocations.id,
+            name: arrivalLocations.name,
+            code: arrivalLocations.code
+          }
+        })
+        .from(schedules)
+        .innerJoin(trains, eq(schedules.trainId, trains.id))
+        .innerJoin(locations, eq(schedules.departureLocationId, locations.id))
+        .innerJoin(arrivalLocations, eq(schedules.arrivalLocationId, arrivalLocations.id));
+
+      res.json({
+        success: true,
+        data: exportData
+      });
+    } catch (error) {
+      console.error("[API] Failed to export schedules:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to export schedules",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
 
   // Health check endpoint
   app.get("/api/health", async (req, res) => {

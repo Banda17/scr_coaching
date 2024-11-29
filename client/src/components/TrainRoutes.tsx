@@ -39,10 +39,10 @@ type ScheduleExportData = {
   'To Code': string;
   'Departure': string;
   'Arrival': string;
-  'Duration': string;
-  'Status': string;
   'Running Days': string;
-  'Effective Period': string;
+  'Effective Start Date': string;
+  'Effective End Date': string;
+  'Status': string;
 }
 
 export default function TrainRoutes({ schedules }: TrainRouteProps) {
@@ -98,15 +98,13 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
       'To Code': schedule.arrivalLocation?.code ?? 'N/A',
       'Departure': format(new Date(schedule.scheduledDeparture), 'dd/MM/yyyy HH:mm'),
       'Arrival': format(new Date(schedule.scheduledArrival), 'dd/MM/yyyy HH:mm'),
-      'Duration': formatDuration(new Date(schedule.scheduledDeparture), new Date(schedule.scheduledArrival)),
       'Status': schedule.isCancelled ? 'Cancelled' : schedule.status,
       'Running Days': schedule.runningDays
-        .map((runs, index) => runs ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index] : '')
+        .map((runs, index) => runs ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : '')
         .filter(Boolean)
         .join(', '),
-      'Effective Period': `${format(new Date(schedule.effectiveStartDate), 'dd/MM/yyyy')}${
-        schedule.effectiveEndDate ? ` - ${format(new Date(schedule.effectiveEndDate), 'dd/MM/yyyy')}` : ''
-      }`
+      'Effective Start Date': format(new Date(schedule.effectiveStartDate), 'yyyy-MM-dd'),
+      'Effective End Date': schedule.effectiveEndDate ? format(new Date(schedule.effectiveEndDate), 'yyyy-MM-dd') : ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
