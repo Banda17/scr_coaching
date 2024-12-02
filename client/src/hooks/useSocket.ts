@@ -75,6 +75,8 @@ export function useSocket() {
     status: string;
     actualDeparture?: string | null;
     actualArrival?: string | null;
+    attachTrainNumber?: string | null;
+    attachTime?: string | null;
   }) => {
     if (!isConnected) {
       toast({

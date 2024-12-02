@@ -71,8 +71,14 @@ export const schedules = pgTable("schedules", {
   runningDays: boolean("running_days").array().notNull().default([true, true, true, true, true, true, true]),
   effectiveStartDate: timestamp("effective_start_date").notNull().default(sql`CURRENT_DATE`),
   effectiveEndDate: timestamp("effective_end_date"),
-  // New fields for TRC and SALOON trains
+  // Fields for SALOON and FTR trains
   shortRouteLocationId: integer("short_route_location_id").references(() => locations.id),
+  detachLocationId: integer("detach_location_id").references(() => locations.id),
+  attachLocationId: integer("attach_location_id").references(() => locations.id),
+  detachTime: timestamp("detach_time"),
+  attachTime: timestamp("attach_time"),
+  attachTrainNumber: text("attach_train_number"),
+  attachStatus: text("attach_status").default('pending'),
   remarks: text("remarks"),
   // New fields for SPIC and SPL trains
   takingOverTime: timestamp("taking_over_time"),

@@ -317,11 +317,39 @@ export function registerRoutes(app: Express) {
         runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
         effectiveStartDate: z.coerce.date(),
         effectiveEndDate: z.coerce.date().nullable().optional(),
+        detachLocationId: z.number().nullable().optional(),
+        attachLocationId: z.number().nullable().optional(),
+        detachTime: z.coerce.date().nullable().optional(),
+        attachTime: z.coerce.date().nullable().optional(),
+        attachTrainNumber: z.string().nullable().optional(),
+        attachStatus: z.enum(['pending', 'completed', 'cancelled']).nullable().optional(),
         importantStations: z.array(z.object({
           locationId: z.number(),
           arrivalTime: z.string(),
           departureTime: z.string()
         })).optional()
+      }).refine((data) => {
+        if (data.detachTime && data.scheduledDeparture && data.scheduledArrival) {
+          const detachDate = new Date(data.detachTime);
+          const departureDate = new Date(data.scheduledDeparture);
+          const arrivalDate = new Date(data.scheduledArrival);
+          return detachDate >= departureDate && detachDate <= arrivalDate;
+        }
+        return true;
+      }, {
+        message: "Detach time must be between departure and arrival times",
+        path: ["detachTime"]
+      }).refine((data) => {
+        if (data.attachTime && data.scheduledDeparture && data.scheduledArrival) {
+          const attachDate = new Date(data.attachTime);
+          const departureDate = new Date(data.scheduledDeparture);
+          const arrivalDate = new Date(data.scheduledArrival);
+          return attachDate >= departureDate && attachDate <= arrivalDate;
+        }
+        return true;
+      }, {
+        message: "Attach time must be between departure and arrival times",
+        path: ["attachTime"]
       });
 
       const result = scheduleSchema.safeParse(req.body);
@@ -333,15 +361,116 @@ export function registerRoutes(app: Express) {
         });
       }
 
+      // Verify train type for special operations
+      const [train] = await db
+        .select()
+        .from(trains)
+        .where(eq(trains.id, result.data.trainId))
+        .limit(1);
+
+      if (!train) {
+        return res.status(404).json({
+          error: "Train not found",
+          message: "The specified train does not exist"
+        });
+      }
+
+      // Validate special operations for SALOON and FTR trains
+      if (train.type === 'saloon' || train.type === 'ftr') {
+        // Validate attach location and train number together
+        if (result.data.attachLocationId || result.data.attachTrainNumber || result.data.attachTime) {
+          if (!result.data.attachLocationId || !result.data.attachTrainNumber || !result.data.attachTime) {
+            return res.status(400).json({
+              error: "Invalid attach configuration",
+              message: "When specifying attach operations, all fields (location, train number, and time) are required"
+            });
+          }
+
+          const [attachLocation] = await db
+            .select()
+            .from(locations)
+            .where(eq(locations.id, result.data.attachLocationId))
+            .limit(1);
+
+          if (!attachLocation) {
+            return res.status(404).json({
+              error: "Invalid attach location",
+              message: "The specified attach location does not exist"
+            });
+          }
+        }
+
+        // Validate detach location and time together
+        if (result.data.detachLocationId || result.data.detachTime) {
+          if (!result.data.detachLocationId || !result.data.detachTime) {
+            return res.status(400).json({
+              error: "Invalid detach configuration",
+              message: "When specifying detach operations, both location and time are required"
+            });
+          }
+
+          const [detachLocation] = await db
+            .select()
+            .from(locations)
+            .where(eq(locations.id, result.data.detachLocationId))
+            .limit(1);
+
+          if (!detachLocation) {
+            return res.status(404).json({
+              error: "Invalid detach location",
+              message: "The specified detach location does not exist"
+            });
+          }
+        }
+      } else if (result.data.attachLocationId || result.data.detachLocationId || result.data.attachTrainNumber) {
+        return res.status(400).json({
+          error: "Invalid train type for attach/detach operations",
+          message: "Attach and detach operations are only available for SALOON and FTR trains"
+        });
+      }
+
+      // Prepare schedule data with proper handling of special fields
+      const scheduleData = {
+        ...result.data,
+        attachStatus: result.data.attachTrainNumber ? 'pending' : null,
+      };
+
       const [newSchedule] = await db
         .insert(schedules)
-        .values(result.data)
+        .values(scheduleData)
         .returning();
 
-      // Return JSON response
+      // Fetch relations for the response
+      const [scheduleWithRelations] = await db
+        .select({
+          id: schedules.id,
+          trainId: schedules.trainId,
+          departureLocationId: schedules.departureLocationId,
+          arrivalLocationId: schedules.arrivalLocationId,
+          scheduledDeparture: schedules.scheduledDeparture,
+          scheduledArrival: schedules.scheduledArrival,
+          status: schedules.status,
+          detachLocationId: schedules.detachLocationId,
+          attachLocationId: schedules.attachLocationId,
+          detachTime: schedules.detachTime,
+          attachTime: schedules.attachTime,
+          attachTrainNumber: schedules.attachTrainNumber,
+          attachStatus: schedules.attachStatus,
+          train: {
+            id: trains.id,
+            trainNumber: trains.trainNumber,
+            type: trains.type
+          }
+        })
+        .from(schedules)
+        .where(eq(schedules.id, newSchedule.id))
+        .innerJoin(trains, eq(schedules.trainId, trains.id))
+        .limit(1);
+
+      // Return JSON response with full relations
       return res.json({
         success: true,
-        data: newSchedule
+        data: scheduleWithRelations
       });
     } catch (error) {
       console.error("[API] Failed to create schedule:", error);
@@ -370,6 +499,10 @@ export function registerRoutes(app: Express) {
         runningDays: schedules.runningDays,
         effectiveStartDate: schedules.effectiveStartDate,
         effectiveEndDate: schedules.effectiveEndDate,
+        detachLocationId: schedules.detachLocationId,
+        attachLocationId: schedules.attachLocationId,
+        detachTime: schedules.detachTime,
+        attachTime: schedules.attachTime,
         train: {
           id: trains.id,
           trainNumber: trains.trainNumber,
@@ -422,6 +555,32 @@ export function registerRoutes(app: Express) {
         runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
         effectiveStartDate: z.string().transform(str => new Date(str)),
         effectiveEndDate: z.string().nullable().optional(),
+        detachLocationId: z.number().nullable().optional(),
+        attachLocationId: z.number().nullable().optional(),
+        detachTime: z.string().nullable().optional().transform(str => str ? new Date(str) : null),
+        attachTime: z.string().nullable().optional().transform(str => str ? new Date(str) : null),
+      }).refine((data) => {
+        if (data.detachTime) {
+          const detachDate = new Date(data.detachTime);
+          const departureDate = new Date(data.scheduledDeparture);
+          const arrivalDate = new Date(data.scheduledArrival);
+          return detachDate >= departureDate && detachDate <= arrivalDate;
+        }
+        return true;
+      }, {
+        message: "Detach time must be between departure and arrival times",
+        path: ["detachTime"]
+      }).refine((data) => {
+        if (data.attachTime) {
+          const attachDate = new Date(data.attachTime);
+          const departureDate = new Date(data.scheduledDeparture);
+          const arrivalDate = new Date(data.scheduledArrival);
+          return attachDate >= departureDate && attachDate <= arrivalDate;
+        }
+        return true;
+      }, {
+        message: "Attach time must be between departure and arrival times",
+        path: ["attachTime"]
       });
 
       const schedulesArray = z.array(scheduleSchema);

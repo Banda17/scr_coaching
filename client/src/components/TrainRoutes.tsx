@@ -24,6 +24,8 @@ interface Location {
 interface ExtendedSchedule extends Schedule {
   departureLocation?: Location;
   arrivalLocation?: Location;
+  detachLocation?: Location;
+  attachLocation?: Location;
 }
 
 interface TrainRouteProps {
@@ -181,6 +183,22 @@ export default function TrainRoutes({ schedules }: TrainRouteProps) {
                 <div className="flex flex-col">
                   <span>{schedule.arrivalLocation?.name ?? schedule.arrivalLocationId}</span>
                   <span className="text-xs text-muted-foreground">{schedule.arrivalLocation?.code}</span>
+                  {(schedule.train?.type === 'saloon' || schedule.train?.type === 'ftr') && (
+                    <>
+                      {schedule.detachLocationId && (
+                        <div className="mt-1 text-xs">
+                          <span className="font-medium">Detach: </span>
+                          {schedule.detachLocation?.name} at {schedule.detachTime ? format(new Date(schedule.detachTime), 'HH:mm') : 'N/A'}
+                        </div>
+                      )}
+                      {schedule.attachLocationId && (
+                        <div className="text-xs">
+                          <span className="font-medium">Attach: </span>
+                          {schedule.attachLocation?.name} at {schedule.attachTime ? format(new Date(schedule.attachTime), 'HH:mm') : 'N/A'}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </TableCell>
               <TableCell>

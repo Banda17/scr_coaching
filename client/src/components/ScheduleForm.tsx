@@ -56,7 +56,19 @@ const scheduleSchema = insertScheduleSchema.extend({
   runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
   status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled']).default('scheduled'),
   isCancelled: z.boolean().default(false),
-  importantStations: importantStationSchema
+  importantStations: importantStationSchema,
+  attachLocationId: z.number().nullable().optional(),
+  attachTrainNumber: z.string().min(1, "Attach train number is required").optional(),
+  attachTime: z.coerce.date().nullable().optional()
+}).refine((data) => {
+  if (data.attachTime && data.scheduledDeparture && data.scheduledArrival) {
+    return new Date(data.attachTime) >= new Date(data.scheduledDeparture) && 
+           new Date(data.attachTime) <= new Date(data.scheduledArrival);
+  }
+  return true;
+}, {
+  message: "Attach time must be between departure and arrival times",
+  path: ["attachTime"]
 });
 
 type FormData = z.infer<typeof scheduleSchema>;
@@ -76,6 +88,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
   const queryClient = useQueryClient();
   const [selectedTrain, setSelectedTrain] = useState<Train | null>(null);
   const [importantStations, setImportantStations] = useState<ImportantStation[]>([]);
+  const [showSpecialFields, setShowSpecialFields] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(scheduleSchema),
@@ -112,10 +125,34 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Validate attach/detach times for special trains
+      if (selectedTrain?.type === 'saloon' || selectedTrain?.type === 'ftr') {
+        if (data.attachTime && data.attachLocationId && !data.attachTrainNumber) {
+          throw new Error('Attach train number is required when specifying attach location and time');
+        }
+        if (data.attachTrainNumber && !data.attachLocationId) {
+          throw new Error('Attach location is required when specifying attach train number');
+        }
+      }
+
       const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          ...data,
+          // Only include attach/detach fields for special trains
+          ...(selectedTrain?.type === 'saloon' || selectedTrain?.type === 'ftr' ? {
+            attachLocationId: data.attachLocationId || null,
+            attachTrainNumber: data.attachTrainNumber || null,
+            attachTime: data.attachTime || null,
+            attachStatus: data.attachTrainNumber ? 'pending' : null
+          } : {
+            attachLocationId: null,
+            attachTrainNumber: null,
+            attachTime: null,
+            attachStatus: null
+          })
+        })
       });
 
       if (!response.ok) {
@@ -133,6 +170,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       });
       form.reset();
       setImportantStations([]);
+      setShowSpecialFields(false);
     },
     onError: (error: Error) => {
       toast({
@@ -174,6 +212,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
               }
 
               setSelectedTrain(train);
+              setShowSpecialFields(train.type === 'saloon' || train.type === 'ftr');
               form.setValue('trainId', selectedId);
               form.setValue('trainNumber', train.trainNumber);
               
@@ -299,6 +338,66 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
           ))}
         </div>
       </div>
+
+      {showSpecialFields && (
+        <div className="space-y-4 border-t pt-4 mt-4">
+          <h3 className="font-medium">Special Train Configuration</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label>Attach Location</label>
+              <Select
+                onValueChange={(value) => form.setValue('attachLocationId', parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select attach location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id.toString()}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label>Attach Train Number</label>
+              <Input
+                type="text"
+                {...form.register('attachTrainNumber')}
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+                  form.formState.errors.attachTrainNumber && "border-red-500"
+                )}
+                placeholder="Enter train number to attach"
+              />
+              {form.formState.errors.attachTrainNumber && (
+                <p className="text-sm text-red-500 mt-1">
+                  {form.formState.errors.attachTrainNumber.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label>Attach Time</label>
+              <Input
+                type="datetime-local"
+                {...form.register('attachTime')}
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
+                  form.formState.errors.attachTime && "border-red-500"
+                )}
+              />
+              {form.formState.errors.attachTime && (
+                <p className="text-sm text-red-500 mt-1">
+                  {form.formState.errors.attachTime.message}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Button type="submit" disabled={mutation.isPending}>
         {mutation.isPending ? "Creating..." : "Create Schedule"}

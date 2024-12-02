@@ -21,6 +21,11 @@ export function setupWebSocket(httpServer: HttpServer) {
       status: string;
       actualDeparture?: string | null;
       actualArrival?: string | null;
+      attachTrainNumber?: string | null;
+      attachTime?: string | null;
+      attachStatus?: 'pending' | 'completed' | 'cancelled' | null;
+      detachLocationId?: number | null;
+      detachTime?: string | null;
     }) => {
       try {
         // Update the schedule in database
@@ -28,7 +33,12 @@ export function setupWebSocket(httpServer: HttpServer) {
           .set({
             status: data.status,
             actualDeparture: data.actualDeparture ? new Date(data.actualDeparture) : null,
-            actualArrival: data.actualArrival ? new Date(data.actualArrival) : null
+            actualArrival: data.actualArrival ? new Date(data.actualArrival) : null,
+            attachTrainNumber: data.attachTrainNumber,
+            attachTime: data.attachTime ? new Date(data.attachTime) : null,
+            attachStatus: data.attachStatus,
+            detachLocationId: data.detachLocationId,
+            detachTime: data.detachTime ? new Date(data.detachTime) : null
           })
           .where(eq(schedules.id, data.id))
           .returning();
