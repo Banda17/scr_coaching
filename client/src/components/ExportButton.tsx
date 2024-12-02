@@ -21,16 +21,24 @@ interface Train {
   description: string | null;
 }
 
-interface ScheduleWithRelations extends Omit<Schedule, 'train' | 'trainId'> {
+interface ImportantStation {
+  locationId: number;
+  locationName: string;
+  arrivalTime: string;
+  departureTime: string;
+}
+
+type ScheduleWithRelations = Omit<Schedule, 'train' | 'trainId'> & {
   train?: Train;
   departureLocation?: Location;
   arrivalLocation?: Location;
   trainId: number | null;
-}
+  importantStations?: ImportantStation[];
+};
 
 export default function ExportButton() {
   const { toast } = useToast();
-  const { data: schedules } = useQuery({
+  const { data: schedules } = useQuery<ScheduleWithRelations[]>({
     queryKey: ['schedules'],
     queryFn: async () => {
       const response = await fetch('/api/schedules/export');
@@ -38,7 +46,7 @@ export default function ExportButton() {
         throw new Error('Failed to export schedules');
       }
       const result = await response.json();
-      return result.data as ScheduleWithRelations[];
+      return result.data;
     }
   });
 
@@ -48,16 +56,43 @@ export default function ExportButton() {
     try {
       const exportData = schedules.map(schedule => ({
         trainId: schedule.trainId,
+        trainNumber: schedule.train?.trainNumber,
+        trainType: schedule.train?.type,
+        trainDescription: schedule.train?.description,
         departureLocationId: schedule.departureLocationId,
+        departureLocation: schedule.departureLocation?.name,
+        departureCode: schedule.departureLocation?.code,
         arrivalLocationId: schedule.arrivalLocationId,
-        scheduledDeparture: schedule.scheduledDeparture.toISOString(),
-        scheduledArrival: schedule.scheduledArrival.toISOString(),
+        arrivalLocation: schedule.arrivalLocation?.name,
+        arrivalCode: schedule.arrivalLocation?.code,
+        scheduledDeparture: new Date(schedule.scheduledDeparture).toISOString(),
+        scheduledArrival: new Date(schedule.scheduledArrival).toISOString(),
+        actualDeparture: schedule.actualDeparture ? new Date(schedule.actualDeparture).toISOString() : null,
+        actualArrival: schedule.actualArrival ? new Date(schedule.actualArrival).toISOString() : null,
         status: schedule.status,
         isCancelled: schedule.isCancelled,
         runningDays: schedule.runningDays,
-        effectiveStartDate: schedule.effectiveStartDate.toISOString(),
-        effectiveEndDate: schedule.effectiveEndDate ? schedule.effectiveEndDate.toISOString() : null
+        effectiveStartDate: new Date(schedule.effectiveStartDate).toISOString(),
+        effectiveEndDate: schedule.effectiveEndDate ? new Date(schedule.effectiveEndDate).toISOString() : null,
+        attachDetails: schedule.attachTrainNumber ? {
+          trainNumber: schedule.attachTrainNumber,
+          time: schedule.attachTime ? new Date(schedule.attachTime).toISOString() : null,
+          status: schedule.attachStatus,
+          locationId: schedule.attachLocationId,
+          locationName: schedule.departureLocation?.name
+        } : null,
+        detachDetails: schedule.detachLocationId ? {
+          locationId: schedule.detachLocationId,
+          locationName: schedule.arrivalLocation?.name
+        } : null,
+        importantStations: schedule.importantStations?.map(station => ({
+          locationId: station.locationId,
+          name: station.locationName,
+          arrivalTime: new Date(station.arrivalTime).toISOString(),
+          departureTime: new Date(station.departureTime).toISOString()
+        })) || []
       }));
+      
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       downloadFile(dataBlob, 'railway_schedules.json', 'application/json');
@@ -93,7 +128,14 @@ export default function ExportButton() {
           day ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][index] : ''
         ).filter(Boolean).join(', '),
         'Effective From': new Date(schedule.effectiveStartDate).toLocaleDateString(),
-        'Effective Until': schedule.effectiveEndDate ? new Date(schedule.effectiveEndDate).toLocaleDateString() : 'N/A'
+        'Effective Until': schedule.effectiveEndDate ? new Date(schedule.effectiveEndDate).toLocaleDateString() : 'N/A',
+        'Attach Details': schedule.attachTrainNumber ? 
+          `Train: ${schedule.attachTrainNumber} | Status: ${schedule.attachStatus || 'N/A'} | Location: ${schedule.departureLocation?.name || 'N/A'} | Time: ${schedule.attachTime ? new Date(schedule.attachTime).toLocaleString() : 'N/A'}` : 'N/A',
+        'Detach Details': schedule.detachLocationId ?
+          `Location: ${schedule.arrivalLocation?.name || 'N/A'} | Time: ${schedule.detachTime ? new Date(schedule.detachTime).toLocaleString() : 'N/A'}` : 'N/A',
+        'Important Stations': schedule.importantStations?.map(station => 
+          `${station.locationName}\nArr: ${new Date(station.arrivalTime).toLocaleString()}\nDep: ${new Date(station.departureTime).toLocaleString()}`
+        ).join('\n---\n') || 'N/A'
       }));
 
       const wb = XLSX.utils.book_new();
@@ -101,9 +143,9 @@ export default function ExportButton() {
       
       const colWidths = [
         { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 12 },
-        { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
-        { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 50 }, { wch: 15 },
-        { wch: 15 }
+        { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 12 },
+        { wch: 10 }, { wch: 50 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+        { wch: 12 }, { wch: 22 }, { wch: 15 }, { wch: 22 }, { wch: 50 }
       ];
       ws['!cols'] = colWidths;
 
@@ -153,36 +195,49 @@ export default function ExportButton() {
       doc.setFontSize(10);
       doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 22, { align: 'center' });
 
-      const tableData = schedules.map(schedule => [
-        schedule.train?.trainNumber || (schedule.trainId ? schedule.trainId.toString() : 'N/A'),
-        schedule.departureLocation?.name || 'N/A',
-        schedule.arrivalLocation?.name || 'N/A',
-        new Date(schedule.scheduledDeparture).toLocaleString(),
-        new Date(schedule.scheduledArrival).toLocaleString(),
-        schedule.isCancelled ? 'Cancelled' : schedule.status,
-        schedule.runningDays
-          .map((day, index) => day ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][index] : '')
-          .filter(Boolean)
-          .join(', '),
-        schedule.train?.type || 'N/A'
-      ]);
+      const tableData = schedules.map(schedule => {
+        const row = [
+          schedule.train?.trainNumber || (schedule.trainId ? schedule.trainId.toString() : 'N/A'),
+          `${schedule.departureLocation?.name || 'N/A'}\n(${schedule.departureLocation?.code || 'N/A'})`,
+          `${schedule.arrivalLocation?.name || 'N/A'}\n(${schedule.arrivalLocation?.code || 'N/A'})`,
+          `Sch: ${new Date(schedule.scheduledDeparture).toLocaleString()}\n${schedule.actualDeparture ? `Act: ${new Date(schedule.actualDeparture).toLocaleString()}` : ''}`,
+          `Sch: ${new Date(schedule.scheduledArrival).toLocaleString()}\n${schedule.actualArrival ? `Act: ${new Date(schedule.actualArrival).toLocaleString()}` : ''}`,
+          schedule.isCancelled ? 'Cancelled' : schedule.status,
+          schedule.runningDays
+            .map((day, index) => day ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][index] : '')
+            .filter(Boolean)
+            .join(', '),
+          schedule.train?.type || 'N/A',
+          schedule.attachTrainNumber ? 
+            `Train: ${schedule.attachTrainNumber}\nStatus: ${schedule.attachStatus}\nTime: ${schedule.attachTime ? new Date(schedule.attachTime).toLocaleTimeString() : 'N/A'}` : 'N/A',
+          schedule.detachLocationId ? schedule.arrivalLocation?.name || 'N/A' : 'N/A',
+          schedule.importantStations?.map(station => 
+            `${station.locationName}\nArr: ${new Date(station.arrivalTime).toLocaleString()}\nDep: ${new Date(station.departureTime).toLocaleString()}`
+          ).join('\n---\n') || 'N/A'
+        ];
+
+        return row;
+      });
 
       const tableOptions: UserOptions = {
-        head: [['Train', 'From', 'To', 'Departure', 'Arrival', 'Status', 'Days', 'Type']],
+        head: [['Train', 'From', 'To', 'Departure', 'Arrival', 'Status', 'Days', 'Type', 'Attach', 'Detach', 'Important Stations']],
         body: tableData,
         startY: 30,
         theme: 'grid',
         headStyles: { fillColor: [66, 66, 66] },
         styles: { fontSize: 8, cellPadding: 2 },
         columnStyles: {
-          0: { cellWidth: 20 },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 40 },
-          3: { cellWidth: 35 },
-          4: { cellWidth: 35 },
-          5: { cellWidth: 20 },
-          6: { cellWidth: 30 },
-          7: { cellWidth: 20 }
+          0: { cellWidth: 20 },  // Train
+          1: { cellWidth: 25 },  // From
+          2: { cellWidth: 25 },  // To
+          3: { cellWidth: 25 },  // Departure
+          4: { cellWidth: 25 },  // Arrival
+          5: { cellWidth: 15 },  // Status
+          6: { cellWidth: 15 },  // Days
+          7: { cellWidth: 15 },  // Type
+          8: { cellWidth: 20 },  // Attach
+          9: { cellWidth: 15 },  // Detach
+          10: { cellWidth: 40 }  // Important Stations
         },
         didDrawPage: function(data) {
           doc.setFontSize(8);
