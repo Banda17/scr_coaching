@@ -302,6 +302,56 @@ export function registerRoutes(app: Express) {
   });
 
   // Schedules endpoint with proper table aliasing
+  // Create schedule endpoint with validation and error handling
+  app.post("/api/schedules", async (req, res) => {
+    try {
+      // Validate request body
+      const scheduleSchema = z.object({
+        trainId: z.number().min(1, "Train selection is required"),
+        departureLocationId: z.number().min(1, "Departure location is required"),
+        arrivalLocationId: z.number().min(1, "Arrival location is required"),
+        scheduledDeparture: z.coerce.date(),
+        scheduledArrival: z.coerce.date(),
+        status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled']).default('scheduled'),
+        isCancelled: z.boolean().default(false),
+        runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
+        effectiveStartDate: z.coerce.date(),
+        effectiveEndDate: z.coerce.date().nullable().optional(),
+        importantStations: z.array(z.object({
+          locationId: z.number(),
+          arrivalTime: z.string(),
+          departureTime: z.string()
+        })).optional()
+      });
+
+      const result = scheduleSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid schedule data",
+          details: result.error.issues
+        });
+      }
+
+      const [newSchedule] = await db
+        .insert(schedules)
+        .values(result.data)
+        .returning();
+
+      // Return JSON response
+      return res.json({
+        success: true,
+        data: newSchedule
+      });
+    } catch (error) {
+      console.error("[API] Failed to create schedule:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to create schedule",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+    }
+  });
   app.get("/api/schedules", async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
@@ -614,6 +664,62 @@ export function registerRoutes(app: Express) {
       });
     }
   });
+  app.get("/api/trains", async (req, res) => {
+    try {
+      console.log("[API] Fetching trains...");
+      const allTrains = await db
+        .select({
+          id: trains.id,
+          trainNumber: trains.trainNumber,
+          type: trains.type,
+          description: trains.description,
+          maxSpeed: trains.maxSpeed,
+          priorityLevel: trains.priorityLevel,
+          features: trains.features
+        })
+        .from(trains)
+        .orderBy(trains.trainNumber);
+
+      // Format and validate the response data
+      const formattedTrains = allTrains.map(train => {
+        if (!train || typeof train.id !== 'number' || typeof train.trainNumber !== 'string') {
+          console.error("[API] Invalid train data:", train);
+          return null;
+        }
+        return {
+          id: train.id,
+          trainNumber: train.trainNumber,
+          type: train.type || 'unknown',
+          description: train.description || '',
+          maxSpeed: train.maxSpeed || 0,
+          priorityLevel: train.priorityLevel || 0,
+          features: Array.isArray(train.features) ? train.features : []
+        };
+      }).filter(Boolean);
+
+      console.log("[API] Found trains:", {
+        count: formattedTrains.length,
+        sample: formattedTrains[0]
+      });
+
+      // Send proper JSON response with validation
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({
+        success: true,
+        count: formattedTrains.length,
+        data: formattedTrains
+      });
+    } catch (error) {
+      console.error("[API] Failed to fetch trains:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch trains",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
 
   // Bulk import locations with validation
   app.post("/api/locations/import", requireRole(UserRole.Admin), async (req, res) => {

@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,11 +56,6 @@ const scheduleSchema = insertScheduleSchema.extend({
   runningDays: z.array(z.boolean()).length(7).default(Array(7).fill(true)),
   status: z.enum(['scheduled', 'delayed', 'completed', 'cancelled']).default('scheduled'),
   isCancelled: z.boolean().default(false),
-  // Train type specific fields
-  shortRouteLocationId: z.number().optional(),
-  remarks: z.string().optional(),
-  takingOverTime: z.string().optional(),
-  handingOverTime: z.string().optional(),
   importantStations: importantStationSchema
 });
 
@@ -77,11 +72,10 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
-  const [selectedTrain, setSelectedTrain] = useState<Train | null>(null);
-  const [importantStations, setImportantStations] = useState<ImportantStation[]>([]);
-  const [extraLocations, setExtraLocations] = useState<ExtraLocation[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedTrain, setSelectedTrain] = useState<Train | null>(null);
+  const [importantStations, setImportantStations] = useState<ImportantStation[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(scheduleSchema),
@@ -89,9 +83,32 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
       status: 'scheduled',
       isCancelled: false,
       runningDays: Array(7).fill(true),
-      importantStations: []
+      importantStations: [],
+      trainId: undefined,
+      trainNumber: '',
+      effectiveStartDate: new Date(),
+      effectiveEndDate: null,
+      departureLocationId: undefined,
+      arrivalLocationId: undefined
     }
   });
+
+  // Debug logging and validation for trains data
+  useEffect(() => {
+    console.log('ScheduleForm - Trains data:', {
+      count: trains?.length || 0,
+      sample: trains?.[0]
+    });
+
+    if (!Array.isArray(trains) || trains.length === 0) {
+      console.error('ScheduleForm - Invalid or empty trains data');
+      toast({
+        title: "Error",
+        description: "No trains available. Please add trains first.",
+        variant: "destructive"
+      });
+    }
+  }, [trains, toast]);
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -128,131 +145,43 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
 
   const onSubmit = form.handleSubmit((data) => mutation.mutate(data));
 
+  // Check if trains data is valid
+  if (!Array.isArray(trains)) {
+    console.error('Invalid trains data provided');
+    return <div>Error: Invalid trains data</div>;
+  }
+
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Extra Locations */}
-        <div className="col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <label className="text-lg font-medium">Additional Locations</label>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const newLocation: ExtraLocation = {
-                  locationId: 0,
-                  arrivalTime: '',
-                  departureTime: '',
-                  remarks: ''
-                };
-                setExtraLocations([...extraLocations, newLocation]);
-                const currentLocations = form.getValues('extraLocations') || [];
-                form.setValue('extraLocations', [...currentLocations, newLocation]);
-              }}
-            >
-              + Add Location
-            </Button>
-          </div>
-          
-          {extraLocations.map((location, index) => (
-            <div key={index} className="grid grid-cols-3 gap-4 items-center mb-4 p-4 border rounded-lg">
-              <Select
-                value={location.locationId.toString()}
-                onValueChange={(value) => {
-                  const newLocations = [...extraLocations];
-                  newLocations[index] = {
-                    ...newLocations[index],
-                    locationId: parseInt(value)
-                  };
-                  setExtraLocations(newLocations);
-                  form.setValue('extraLocations', newLocations);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id.toString()}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Input
-                type="time"
-                value={location.arrivalTime}
-                onChange={(e) => {
-                  const newLocations = [...extraLocations];
-                  newLocations[index] = {
-                    ...newLocations[index],
-                    arrivalTime: e.target.value
-                  };
-                  setExtraLocations(newLocations);
-                  form.setValue('extraLocations', newLocations);
-                }}
-                placeholder="Arrival Time"
-              />
-              
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    type="time"
-                    value={location.departureTime}
-                    onChange={(e) => {
-                      const newLocations = [...extraLocations];
-                      newLocations[index] = {
-                        ...newLocations[index],
-                        departureTime: e.target.value
-                      };
-                      setExtraLocations(newLocations);
-                      form.setValue('extraLocations', newLocations);
-                    }}
-                    placeholder="Departure Time"
-                  />
-                  
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => {
-                      const newLocations = [...extraLocations];
-                      newLocations.splice(index, 1);
-                      setExtraLocations(newLocations);
-                      form.setValue('extraLocations', newLocations);
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </div>
-                <Input
-                  value={location.remarks}
-                  onChange={(e) => {
-                    const newLocations = [...extraLocations];
-                    newLocations[index] = {
-                      ...newLocations[index],
-                      remarks: e.target.value
-                    };
-                    setExtraLocations(newLocations);
-                    form.setValue('extraLocations', newLocations);
-                  }}
-                  placeholder="Add remarks for this location"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className="space-y-2">
           <label>Train</label>
           <Select
             onValueChange={(value) => {
-              const train = trains.find(t => t.id === parseInt(value));
-              setSelectedTrain(train || null);
-              form.setValue('trainId', parseInt(value));
-              if (train) {
-                form.setValue('trainNumber', train.trainNumber);
+              if (!value) return;
+              
+              const selectedId = parseInt(value, 10);
+              const train = trains?.find(t => t.id === selectedId);
+              
+              if (!train) {
+                console.error('Selected train not found:', selectedId);
+                toast({
+                  title: "Error",
+                  description: "Selected train not found",
+                  variant: "destructive"
+                });
+                return;
               }
+
+              setSelectedTrain(train);
+              form.setValue('trainId', selectedId);
+              form.setValue('trainNumber', train.trainNumber);
+              
+              console.log('Selected train:', {
+                id: train.id,
+                number: train.trainNumber,
+                type: train.type
+              });
             }}
           >
             <SelectTrigger>
@@ -261,7 +190,7 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             <SelectContent>
               {trains.map((train) => (
                 <SelectItem key={train.id} value={train.id.toString()}>
-                  {train.trainNumber} ({train.type.toUpperCase()})
+                  {train.trainNumber} ({train.type})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -327,115 +256,6 @@ export default function ScheduleForm({ trains, locations }: ScheduleFormProps) {
             )}
           />
         </div>
-
-        {/* Train type specific fields */}
-        {selectedTrain && (selectedTrain.type === TrainType.SALOON || selectedTrain.type === TrainType.FTR) && (
-          <>
-            <div className="space-y-2">
-              <label>Short Route Location</label>
-              <Select
-                onValueChange={(value) => form.setValue('shortRouteLocationId', parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select short route location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label>Remarks</label>
-              <Input
-                {...form.register('remarks')}
-                placeholder="Enter remarks"
-              />
-            </div>
-          </>
-        )}
-
-        {selectedTrain && (selectedTrain.type === TrainType.Express || selectedTrain.type === TrainType.SPIC) && (
-          <>
-            <div className="space-y-2">
-              <label>Taking Over Time</label>
-              <Input
-                type="time"
-                {...form.register('takingOverTime')}
-              />
-            </div>
-            <div className="space-y-2">
-              <label>Handing Over Time</label>
-              <Input
-                type="time"
-                {...form.register('handingOverTime')}
-              />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <label>Important Stations</label>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <Select
-                    onValueChange={(value) => {
-                      const newStation: ImportantStation = {
-                        locationId: parseInt(value),
-                        arrivalTime: '',
-                        departureTime: ''
-                      };
-                      setImportantStations([...importantStations, newStation]);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Add station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id.toString()}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {importantStations.map((station, index) => (
-                  <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                    <span>{locations.find(l => l.id === station.locationId)?.name}</span>
-                    <Input
-                      type="time"
-                      value={station.arrivalTime}
-                      onChange={(e) => {
-                        const newStations = [...importantStations];
-                        newStations[index] = {
-                          ...newStations[index],
-                          arrivalTime: e.target.value
-                        };
-                        setImportantStations(newStations);
-                        form.setValue('importantStations', newStations);
-                      }}
-                    />
-                    <Input
-                      type="time"
-                      value={station.departureTime}
-                      onChange={(e) => {
-                        const newStations = [...importantStations];
-                        newStations[index] = {
-                          ...newStations[index],
-                          departureTime: e.target.value
-                        };
-                        setImportantStations(newStations);
-                        form.setValue('importantStations', newStations);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
 
         <div className="space-y-2">
           <label>Effective Start Date</label>
