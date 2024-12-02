@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 interface RoutePerformance {
   departureId: number;
   departureName: string;
-  arrivalId: number;
   totalTrips: number;
+  completedTrips: number;
   delayedTrips: number;
   avgDelayMinutes: number | null;
   peakHourTrips: number;
@@ -29,12 +29,13 @@ interface AnalyticsData {
     total: number;
     delayed: number;
     cancelled: number;
+    completed: number;
   };
   trainUtilization: TrainUtilization[];
   routePerformance: RoutePerformance[];
 }
 
-const COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
+const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444']; // Blue for Scheduled, Green for Completed, Amber for Delayed, Red for Cancelled
 
 async function fetchAnalytics(): Promise<AnalyticsData> {
   const response = await fetch('/api/analytics/schedule-metrics');
@@ -43,9 +44,11 @@ async function fetchAnalytics(): Promise<AnalyticsData> {
 }
 
 export default function Analytics() {
-  const { data: analytics, isLoading } = useQuery<AnalyticsData>({
+  const { data: analytics, isLoading, refetch } = useQuery<AnalyticsData>({
     queryKey: ['analytics'],
-    queryFn: fetchAnalytics
+    queryFn: fetchAnalytics,
+    refetchInterval: 5000, // Refetch every 5 seconds for more real-time updates
+    staleTime: 1000 * 60 * 5 // Consider data stale after 5 minutes
   });
 
   if (isLoading) {
@@ -69,7 +72,7 @@ export default function Analytics() {
         <h1 className="text-3xl font-bold">Railway Analytics</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader>
             <CardTitle>Total Schedules</CardTitle>
@@ -77,6 +80,17 @@ export default function Analytics() {
           <CardContent>
             <span className="text-3xl font-bold">
               {analytics?.overview.total || 0}
+            </span>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Completed Journeys</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <span className="text-3xl font-bold text-green-500">
+              {analytics?.overview.completed || 0}
             </span>
           </CardContent>
         </Card>
@@ -136,12 +150,16 @@ export default function Analytics() {
                   <Pie
                     data={[
                       { 
-                        name: 'On Time', 
-                        value: (analytics?.overview?.total ?? 0) - (analytics?.overview?.delayed ?? 0) - (analytics?.overview?.cancelled ?? 0)
+                        name: 'Scheduled', 
+                        value: (analytics?.overview?.total ?? 0) - 
+                               (analytics?.overview?.delayed ?? 0) - 
+                               (analytics?.overview?.cancelled ?? 0) - 
+                               (analytics?.overview?.completed ?? 0)
                       },
+                      { name: 'Completed', value: analytics?.overview?.completed ?? 0 },
                       { name: 'Delayed', value: analytics?.overview?.delayed ?? 0 },
                       { name: 'Cancelled', value: analytics?.overview?.cancelled ?? 0 }
-                    ]}
+                    ].filter(item => item.value > 0)}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -232,8 +250,9 @@ export default function Analytics() {
                 <tr>
                   <th className="text-left p-2">Departure Station</th>
                   <th className="text-left p-2">Total Trips</th>
+                  <th className="text-left p-2">Completed</th>
                   <th className="text-left p-2">Delayed Trips</th>
-                  <th className="text-left p-2">Delay Rate</th>
+                  <th className="text-left p-2">Completion Rate</th>
                   <th className="text-left p-2">Avg Delay</th>
                   <th className="text-left p-2">Peak Hour Trips</th>
                 </tr>
@@ -243,10 +262,11 @@ export default function Analytics() {
                   <tr key={`${route.departureId}-${route.arrivalId}`}>
                     <td className="p-2">{route.departureName}</td>
                     <td className="p-2">{route.totalTrips}</td>
+                    <td className="p-2">{route.completedTrips}</td>
                     <td className="p-2">{route.delayedTrips}</td>
                     <td className="p-2">
                       {route.totalTrips > 0 
-                        ? ((route.delayedTrips / route.totalTrips) * 100).toFixed(1)
+                        ? ((route.completedTrips / route.totalTrips) * 100).toFixed(1)
                         : '0'}%
                     </td>
                     <td className="p-2">

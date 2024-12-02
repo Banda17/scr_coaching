@@ -578,6 +578,67 @@ export function registerRoutes(app: Express) {
   });
 
 
+// Analytics endpoints
+app.get("/api/analytics/schedule-metrics", async (req, res) => {
+  try {
+    const [metrics] = await db
+      .select({
+        total: sql`COUNT(*)`,
+        delayed: sql`SUM(CASE WHEN status = 'delayed' THEN 1 ELSE 0 END)`,
+        cancelled: sql`SUM(CASE WHEN is_cancelled THEN 1 ELSE 0 END)`,
+        completed: sql`SUM(CASE WHEN status = 'completed' AND actual_arrival IS NOT NULL THEN 1 ELSE 0 END)`
+      })
+      .from(schedules);
+
+    const trainUtilization = await db
+      .select({
+        trainId: trains.id,
+        trainNumber: trains.trainNumber,
+        scheduleCount: sql`COUNT(${schedules.id})`
+      })
+      .from(trains)
+      .leftJoin(schedules, eq(schedules.trainId, trains.id))
+      .groupBy(trains.id, trains.trainNumber);
+
+    const routePerformance = await db
+      .select({
+        departureId: locations.id,
+        departureName: locations.name,
+        totalTrips: sql`COUNT(${schedules.id})`,
+        delayedTrips: sql`SUM(CASE WHEN ${schedules.status} = 'delayed' THEN 1 ELSE 0 END)`,
+        completedTrips: sql`SUM(CASE WHEN ${schedules.status} = 'completed' AND ${schedules.actualArrival} IS NOT NULL THEN 1 ELSE 0 END)`,
+        avgDelayMinutes: sql`AVG(CASE 
+          WHEN ${schedules.status} = 'completed' AND ${schedules.actualArrival} IS NOT NULL 
+          THEN EXTRACT(EPOCH FROM (${schedules.actualArrival} - ${schedules.scheduledArrival})) / 60 
+          ELSE NULL 
+        END)`,
+        peakHourTrips: sql`SUM(CASE 
+          WHEN EXTRACT(HOUR FROM ${schedules.scheduledDeparture}) BETWEEN 7 AND 9 
+               OR EXTRACT(HOUR FROM ${schedules.scheduledDeparture}) BETWEEN 16 AND 18
+          THEN 1 
+          ELSE 0 
+        END)`
+      })
+      .from(locations)
+      .leftJoin(schedules, eq(schedules.departureLocationId, locations.id))
+      .where(sql`${schedules.status} = 'completed' OR ${schedules.status} = 'delayed' OR ${schedules.status} IS NULL`)
+      .groupBy(locations.id, locations.name);
+
+    res.json({
+      overview: {
+        total: Number(metrics?.total ?? 0),
+        delayed: Number(metrics?.delayed ?? 0),
+        cancelled: Number(metrics?.cancelled ?? 0),
+        completed: Number(metrics?.completed ?? 0)
+      },
+      trainUtilization,
+      routePerformance
+    });
+  } catch (error) {
+    console.error("[API] Failed to fetch analytics metrics:", error);
+    res.status(500).json({ error: "Failed to fetch analytics metrics" });
+  }
+});
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {
